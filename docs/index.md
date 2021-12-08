@@ -5,6 +5,7 @@ This python package is designed with the goal of performing spectral separation 
 ## Table of Contents
 1. [Quick Start](quickstart)
 2. [Routine options](routine_options)
+3. [Accessing outputs](results)
 
 You can use the [editor on GitHub](https://github.com/jsinkbaek/sb2sep/edit/main/docs/index.md) to maintain and preview the content for your website in Markdown files.
 
