@@ -1,0 +1,36 @@
+[project]
+name = 'sb2sep'
+version = '1.0'
+description = "Separate Stellar Component Spectra in SB2 Binary System"
+authors = [
+    "Jeppe Sinkbæk Thomsen <jeppest2@gmail.com>"
+]
+license = "MIT"
+readme = "README.md"
+python = "^3.6"
+homepage = "https://github.com/jsinkbaek/sb2sep"
+repository = "https://github.com/jsinkbaek/sb2sep"
+documentation = "https://github.com/jsinkbaek/sb2sep"
+
+keywords = ["SB2 binary analysis", "astronomy", "spectroscopy"]
+
+classifiers = [
+    "Topic :: Observational Astronomy"
+]
+
+# Requirements
+[dependencies]
+numpy = "^1.19.5"
+scipy = "^1.5.4"
+matplotlib = "^3.3.4"
+lmfit = "^1.0.2"
+joblib = "^0.17.0"
+barycorrpy = "^0.4.1"
+astropy = "^4.1"
+
+[build-system]
+requires = [
+    "setuptools >= 57.0.0",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
