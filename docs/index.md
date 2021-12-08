@@ -1,4 +1,10 @@
-## Welcome to GitHub Pages
+## Introduction
+
+This python package is designed with the goal of performing spectral separation and radial velocity calculation for SB2 binary systems. Its functionality is developed from the IDL code used in [Brogaard et al. 2018](https://academic.oup.com/mnras/article/476/3/3729/4833696), which performs the spectral separation method described in [González & Levato 2006](https://www.aanda.org/articles/aa/abs/2006/10/aa3177-05/aa3177-05.html) along with the broadening function method described in [Rucinski 1992](http://astro.utoronto.ca/~rucinski/manscr/CFHT92.pdf) and [Rucinski 2002](http://astro.utoronto.ca/~rucinski/manscr/bin_pub7.pdf) for radial velocity measurements.
+
+## Table of Contents
+1. [Quick Start](quickstart)
+2. [Routine options](routine_options)
 
 You can use the [editor on GitHub](https://github.com/jsinkbaek/sb2sep/edit/main/docs/index.md) to maintain and preview the content for your website in Markdown files.
 
