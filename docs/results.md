@@ -1,5 +1,5 @@
 # Accessing output
-`spectral_separation_routine` returns one of two sets of results If `options.return_unbuffered` is True, every flux and wavelength returned will be the unbuffered version, where no padding was introduced. Otherwise, the buffer zones will not be removed in the arrays returned by the function. In both cases, 5 arrays are returned:
+`spectral_separation_routine` returns one of two sets of results. If `options.return_unbuffered` is True, every flux and wavelength returned will be the unbuffered version, where no padding was introduced. Otherwise, the buffer zones will not be removed in the arrays returned by the function. In both cases, 5 arrays are returned:
 - **RV_collection_A** (numpy array shape (n_spectra, )). All the found radial velocities for the stellar component A.
 - **RV_collection_B** (numpy array shape (n_spectra, )). All the found radial velocities for the stellar component B.
 - **separated_flux_A** (numpy array shape (:, )). The component A flux found using spectral separation.
