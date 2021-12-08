@@ -1,7 +1,0 @@
-LICENSE
-pyproject.toml
-setup.cfg
-src/sb2sep_jsinkbaek.egg-info/PKG-INFO
-src/sb2sep_jsinkbaek.egg-info/SOURCES.txt
-src/sb2sep_jsinkbaek.egg-info/dependency_links.txt
-src/sb2sep_jsinkbaek.egg-info/top_level.txt

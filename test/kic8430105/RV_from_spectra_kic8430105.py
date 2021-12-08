@@ -3,18 +3,29 @@ from astropy.time import Time
 from astropy.coordinates import EarthLocation
 import os
 from barycorrpy import get_BC_vel, utc_tdb
-import src.sb2sep.spectrum_processing_functions as spf
+# import src.sb2sep.spectrum_processing_functions as spf
+# from src.sb2sep.storage_classes import InitialFitParameters, RadialVelocityOptions, SeparateComponentsOptions, \
+#     RoutineOptions
+# import src.sb2sep.spectral_separation_routine as ssr
+# from src.sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
+# import src.sb2sep.broadening_function_svd as bfsvd
+# import src.sb2sep.calculate_radial_velocities as cRV
+
+from sb2sep import spectrum_processing_functions as spf
+from sb2sep.storage_classes import InitialFitParameters, RadialVelocityOptions, SeparateComponentsOptions, \
+    RoutineOptions
+import sb2sep.spectral_separation_routine as ssr
+from sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
+import sb2sep.broadening_function_svd as bfsvd
+import sb2sep.calculate_radial_velocities as cRV
+
 import warnings
 import scipy.constants as scc
-from src.sb2sep.storage_classes import InitialFitParameters, RadialVelocityOptions, SeparateComponentsOptions, \
-    RoutineOptions
-import src.sb2sep.spectral_separation_routine as ssr
-from src.sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
-import src.sb2sep.broadening_function_svd as bfsvd
+
 import matplotlib.pyplot as plt
 import matplotlib
 from copy import deepcopy
-import src.sb2sep.calculate_radial_velocities as cRV
+
 import sys
 
 matplotlib.rcParams.update({'font.size': 25})
@@ -310,8 +321,8 @@ if True:
 
 # # # Calculate error # # #
 # RV_A, RV_B, separated_flux_A_buffered, separated_flux_B_buffered, _, _, _ = interval_results[0]
-_, RV_A = np.loadtxt('../Data/additionals/separation_routine/4500_5825_rvA.txt', unpack=True)
-_, RV_B, _ = np.loadtxt('../Data/additionals/separation_routine/4500_5825_rvB.txt', unpack=True)
+_, RV_A = np.loadtxt('results/separation_routine/4500_5825_rvA.txt', unpack=True)
+_, RV_B, _ = np.loadtxt('results/separation_routine/4500_5825_rvB.txt', unpack=True)
 
 # # Separate component spectra and calculate RVs for each interval # #
 RV_guess_collection[:, 0] = RV_A
