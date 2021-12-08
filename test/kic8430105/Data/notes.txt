@@ -1,0 +1,5 @@
+bad data sets:
+FIBl060068_step011_merge
+
+not school file:
+FIEh020092_step012_merge.fits

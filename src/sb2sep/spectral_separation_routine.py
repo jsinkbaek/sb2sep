@@ -757,10 +757,10 @@ def spectral_separation_routine_multiple_intervals(
 
         options.buffer_mask = buffer_mask_
 
-        RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp, ifitparams, RVb_flags = spectral_separation_routine(
+        RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp, RVb_flags = spectral_separation_routine(
             inv_flux_collection_, templateA_, templateB_,
             wavelength_, options, sep_comp_options, rv_options, RV_guess_collection,
         )
-        results.append([RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp, ifitparams, RVb_flags])
+        results.append([RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp, RVb_flags])
     return results
 
