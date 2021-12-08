@@ -45,7 +45,6 @@ wavelength_buffer_size = 25                     # Ångström, padding included a
 wavelength_intervals_full = [(4500, 5825)]
 wavelength_intervals = [(4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250), (6575, 6840)]
 # wavelength_intervals = [(5985, 6250), (6575, 6840)]
-combine_intervals = None
 # telluric lines: 5885-5970, 6266-6330, 6465-6525, 6850-7050
 # relevant balmer lines: 6563 (H alpha), 4861 (H beta)
 
