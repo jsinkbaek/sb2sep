@@ -8,6 +8,7 @@ This python package is designed with the goal of performing spectral separation 
 3. [Accessing outputs](results)
 
 Modules:
+
 4. [spectral_separation_routine](ssr)
 5. [broadening_function_svd](bfsvd)
 6. [spectral_processing_functions](spf)
