@@ -1,4 +1,4 @@
-# Quickstart - Spectral Separation
+# The Spectral Separation Routine
 The package is separated into multiple modules. The functions associated with the spectral separation is located in the module
 
 ```
