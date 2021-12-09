@@ -188,7 +188,7 @@ def recalculate_RVs(
         inv_flux_collection: np.ndarray, separated_flux_A: np.ndarray, separated_flux_B: np.ndarray,
         RV_collection_A: np.ndarray, RV_collection_B: np.ndarray, inv_flux_templateA: np.ndarray,
         inv_flux_templateB: np.ndarray, buffer_mask: np.ndarray, options: RadialVelocityOptions,
-        plot_ax_A=None, plot_ax_B=None, plot_ax_d1=None, plot_ax_d2=None
+        plot_ax_A=None, plot_ax_B=None
 ):
     """
     This part of the spectral separation routine corrects the spectra for the separated spectra found by
@@ -207,8 +207,6 @@ def recalculate_RVs(
     :param options:             fitting and broadening function options
     :param plot_ax_A:           matplotlib.axes.axes. Used to update RV plots during iterations.
     :param plot_ax_B:           matplotlib.axes.axes. Used to update RV plots during iterations.
-    :param plot_ax_d1:          matplotlib.axes.axes. Extra plot to examine BF A in detail for 1 or 2 spectra.
-    :param plot_ax_d2:          matplotlib.axes.axes. Extra plot to examine BF B in detail for 1 or 2 spectra.
 
     :return:    RV_collection_A,        RV_collection_B, (fits_A, fits_B)
                 RV_collection_A:        updated values for the RV of component A.
@@ -237,14 +235,6 @@ def recalculate_RVs(
         plot_ax_B.clear()
         plot_ax_B.set_xlim([-v_span/2, +v_span/2])
         plot_ax_B.set_xlabel('Velocity shift [km/s]')
-    if plot_ax_d1 is not None:
-        plot_ax_d1.clear()
-        plot_ax_d1.set_xlabel('Velocity shift [km/s]')
-        plot_ax_d1.set_title('Component A, spectrum 16 and 19')
-    if plot_ax_d2 is not None:
-        plot_ax_d2.clear()
-        plot_ax_d2.set_xlabel('Velocity shift [km/s]')
-        plot_ax_d2.set_title('Component B, spectrum 16 and 19')
 
     bf_fitres_A = np.empty(shape=(n_spectra,), dtype=tuple)
     bf_fitres_B = np.empty(shape=(n_spectra,), dtype=tuple)
@@ -341,10 +331,6 @@ def recalculate_RVs(
             if rv_lower_limit != 0.0:
                 plot_ax_B.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
                 plot_ax_B.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-        if plot_ax_d1 is not None and (i==19 or i==16):
-            _update_bf_plot(plot_ax_d1, model_A, i)
-        if plot_ax_d2 is not None and (i==19 or i==16):
-            _update_bf_plot(plot_ax_d2, model_B, i)
 
     if krange == 2:
         options.velocity_fit_width_A = fit_width_A
@@ -374,12 +360,6 @@ def _initialize_ssr_plots():
     f1_ax2 = fig_1.add_subplot(gs_1[1, 0])
     f1_ax3 = fig_1.add_subplot(gs_1[1, 1])
 
-    # Select BF fits
-    fig_2 = plt.figure(figsize=(16, 9))
-    gs_2 = fig_2.add_gridspec(1, 2)
-    f2_ax1 = fig_2.add_subplot(gs_2[:, 0])
-    f2_ax2 = fig_2.add_subplot(gs_2[:, 1])
-
     # Broadening function fits A
     fig_3 = plt.figure(figsize=(16, 9))
     gs_3 = fig_3.add_gridspec(1, 1)
@@ -389,7 +369,7 @@ def _initialize_ssr_plots():
     fig_4 = plt.figure(figsize=(16, 9))
     gs_4 = fig_4.add_gridspec(1, 1)
     f4_ax1 = fig_4.add_subplot(gs_4[:, :])
-    return f1_ax1, f1_ax2, f1_ax3, f2_ax1, f2_ax2, f3_ax1, f4_ax1
+    return f1_ax1, f1_ax2, f1_ax3, f3_ax1, f4_ax1
 
 
 def _plot_ssr_iteration(
@@ -517,9 +497,9 @@ def spectral_separation_routine(
 
     # Initialize plot figures
     if options.plot:
-        f1_ax1, f1_ax2, f1_ax3, f2_ax1, f2_ax2, f3_ax1, f4_ax1 = _initialize_ssr_plots()
+        f1_ax1, f1_ax2, f1_ax3, f3_ax1, f4_ax1 = _initialize_ssr_plots()
     else:
-        f2_ax1 = None; f2_ax2=None; f3_ax1 = None; f4_ax1 = None
+        f1_ax1 = None; f1_ax2 = None; f1_ax3 = None; f3_ax1 = None; f4_ax1 = None
 
     # Iterative loop that repeatedly separates the spectra from each other in order to calculate new RVs (Gonzales 2005)
     iterations = 0
@@ -539,7 +519,7 @@ def spectral_separation_routine(
         RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs(
             inv_flux_collection, separated_flux_A, separated_flux_B, RV_collection_A, RV_collection_B,
             inv_flux_templateA, inv_flux_templateB, buffer_mask, rv_options, plot_ax_A=f3_ax1,
-            plot_ax_B=f4_ax1, plot_ax_d1=f2_ax1, plot_ax_d2=f2_ax2
+            plot_ax_B=f4_ax1
         )
 
         if options.plot:
@@ -616,10 +596,13 @@ def save_separation_data(
     sep_array[:, 0], sep_array[:, 1], sep_array[:, 2] = wavelength, separated_flux_A, separated_flux_B
     sep_array[:, 3], sep_array[:, 4] = template_flux_A, template_flux_B
 
-    np.savetxt(location + filename_bulk + 'rvA.txt', rvA_array)
-    np.savetxt(location + filename_bulk + 'rv_initial.txt', RVs_initial)
-    np.savetxt(location + filename_bulk + 'rvB.txt', rvB_array)
-    np.savetxt(location + filename_bulk + 'sep_flux.txt', sep_array)
+    np.savetxt(location + filename_bulk + 'rvA.txt', rvA_array, header='Time [input units] \t RV_A [km/s]',
+               fmt=('%.9f', '%.6f'))
+    np.savetxt(location + filename_bulk + 'rv_initial.txt', RVs_initial, header='RV_A [km/s] \t RV_B [km/s]',
+               fmt='%.6f')
+    np.savetxt(location + filename_bulk + 'rvB.txt', rvB_array, header='Time [input units] \t RV_B [km/s]',
+               fmt=('%.9f', '%.6f'))
+    np.savetxt(location + filename_bulk + 'sep_flux.txt', sep_array, header='flux_A \t flux_B', fmt='%.6f')
 
     vel_array = np.empty((bf_fitres_A.size, bf_fitres_A[0][1].size))
     bf_array = np.empty((bf_fitres_A.size, bf_fitres_A[0][1].size))
@@ -631,10 +614,11 @@ def save_separation_data(
         bf_array[i, :] = bf_vals_A
         bf_smooth_array[i, :] = bf_smooth_vals_A
         model_array[i, :] = model_vals_A
-    np.savetxt(location + filename_bulk + 'velocities_A.txt', vel_array)
-    np.savetxt(location + filename_bulk + 'bfvals_A.txt', bf_array)
-    np.savetxt(location + filename_bulk + 'bfsmooth_A.txt', bf_smooth_array)
-    np.savetxt(location + filename_bulk + 'models_A.txt', model_array)
+    np.savetxt(location + filename_bulk + 'velocities_A.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+    np.savetxt(location + filename_bulk + 'bfvals_A.txt', bf_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+    np.savetxt(location + filename_bulk + 'bfsmooth_A.txt', bf_smooth_array, fmt='%.6f',
+               header='spec 1 \t spec 2 \t ...')
+    np.savetxt(location + filename_bulk + 'models_A.txt', model_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
 
     for i in range(0, bf_fitres_B.size):
         model_vals_B, bf_velocity_B, bf_vals_B, bf_smooth_vals_B = bf_fitres_B[i][1:]
@@ -642,10 +626,11 @@ def save_separation_data(
         bf_array[i, :] = bf_vals_B
         bf_smooth_array[i, :] = bf_smooth_vals_B
         model_array[i, :] = model_vals_B
-    np.savetxt(location + filename_bulk + 'velocities_B.txt', vel_array)
-    np.savetxt(location + filename_bulk + 'bfvals_B.txt', bf_array)
-    np.savetxt(location + filename_bulk + 'bfsmooth_B.txt', bf_smooth_array)
-    np.savetxt(location + filename_bulk + 'models_B.txt', model_array)
+    np.savetxt(location + filename_bulk + 'velocities_B.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+    np.savetxt(location + filename_bulk + 'bfvals_B.txt', bf_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+    np.savetxt(location + filename_bulk + 'bfsmooth_B.txt', bf_smooth_array, fmt='%.6f',
+               header='spec 1 \t spec 2 \t ...')
+    np.savetxt(location + filename_bulk + 'models_B.txt', model_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
 
 
 def _create_wavelength_intervals(
