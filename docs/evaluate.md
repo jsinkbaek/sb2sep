@@ -36,3 +36,7 @@ Returns: fig, ax1, ax2, ax3
 
 Example rv plot:
 ![RV plot](rv.png)
+
+
+
+[`Next Page: Preparing spectra`](preparation)
