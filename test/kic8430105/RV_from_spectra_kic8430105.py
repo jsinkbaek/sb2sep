@@ -3,23 +3,15 @@ from astropy.time import Time
 from astropy.coordinates import EarthLocation
 import os
 from barycorrpy import get_BC_vel, utc_tdb
-
-from sb2sep import spectrum_processing_functions as spf
-from sb2sep.storage_classes import InitialFitParameters, RadialVelocityOptions, SeparateComponentsOptions, \
-    RoutineOptions
-import sb2sep.spectral_separation_routine as ssr
-from sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
-import sb2sep.broadening_function_svd as bfsvd
-import sb2sep.calculate_radial_velocities as cRV
-
-import warnings
 import scipy.constants as scc
-
 import matplotlib.pyplot as plt
 import matplotlib
-from copy import deepcopy
 
-import sys
+from sb2sep import spectrum_processing_functions as spf
+from sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions
+import sb2sep.spectral_separation_routine as ssr
+from sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
+import sb2sep.calculate_radial_velocities as cRV
 
 matplotlib.rcParams.update({'font.size': 25})
 
@@ -41,11 +33,7 @@ wavelength_intervals = [(4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), 
 # telluric lines: 5885-5970, 6266-6330, 6465-6525, 6850-7050
 # relevant balmer lines: 6563 (H alpha), 4861 (H beta)
 
-# wavelength_intervals_error_estimate = 150       # Ångström, size of the intervals used for error estimation on RVs
-load_data = True      # Defines if normalized spectrum should be loaded from earlier, or done with AFS_algorithm
-plot = False
-file_exclude_list = []  # ['FIBl060068_step011_merge.fits']
-
+file_exclude_list = []
 use_for_spectral_separation_A = [
     'FIDi080098_step011_merge.fits', 'FIDi090065_step011_merge.fits',
     'FIBj150080_step011_merge.fits', 'FIDi130112_step011_merge.fits', 'FIBk030043_step011_merge.fits',
@@ -68,7 +56,7 @@ mass_A_estimate = 1.31  # both used to estimate RV_B
 mass_B_estimate = 0.83
 
 system_RV_estimate = 12.61          # to subtract before routine
-orbital_period_estimate = 63.33     # for ignoring component B during eclipse
+orbital_period_estimate = 63.327     # for ignoring component B during eclipse
 
 # # Stellar parameter estimates (relevant for limb darkening calculation) # #
 Teff_A, Teff_B = 5042, 5621
@@ -77,7 +65,7 @@ MH_A  , MH_B   = -0.49, -0.49
 mTur_A, mTur_B = 2.0, 2.0
 
 # # Initial fit parameters for rotational broadening function fit # #
-bf_velocity_span = 300        # broadening function span in velocity space, should be the same for both components
+bf_velocity_span = 300        # broadening function span in velocity space
 limbd_A = estimate_linear_limbd(wavelength_RV_limit, logg_A, Teff_A, MH_A, mTur_A, loc='Data/tables/atlasco.dat')
 limbd_B = estimate_linear_limbd(wavelength_RV_limit, logg_B, Teff_B, MH_B, mTur_B, loc='Data/tables/atlasco.dat')
 
