@@ -7,6 +7,7 @@ This python package is designed with the goal of performing spectral separation 
 2. [Routine options](routine_options)
 3. [Accessing outputs](results)
 4. [Evaluating output](evaluate)
+5. [Preparing spectra](preparation)
 
 Modules:
 
