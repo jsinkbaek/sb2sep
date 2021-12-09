@@ -11,7 +11,7 @@ Returns:
 - **routine_results** (RoutineResults object). This object can be supplied to the other functions for convenient plotting.
 
 ## Plotting functions
-plot_broadening_functions() input:
+`plot_broadening_functions()` input:
 - evaluation_data (RoutineResults).
 - block (bool), Default = False. If True, plt.show(block=True).
 - xlim (list\[float, float\]), Default = None. If provided, plt.xlim(xlim).
@@ -22,7 +22,7 @@ This function will create a single figure for each wavelength interval provided.
 Example broadening function plot:
 ![Broadening function plot](bf.png)
 
-plot_rv_and_separated_spectra() input:
+`plot_rv_and_separated_spectra()` input:
 - evaluation_data (RoutineResults).
 - period (float).
 - block (bool), Default = False.
