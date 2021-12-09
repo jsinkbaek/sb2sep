@@ -1,6 +1,7 @@
 # Evaluating output
 The `evaluate_ssr_results` module provides convenient ways to evaluate the raw data output from the spectral separation routine with similar plots to those provided during routine execution.
 
+## Load data
 To load the raw data from the routine, the function `load_routine_results` can be used:
 
 Input arguments:
