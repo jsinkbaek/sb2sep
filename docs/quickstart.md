@@ -28,3 +28,9 @@ The wrapper function `spectral_separation_routine_multiple_intervals` is similar
 - **rv_options**
 - **RV_guess_collection**
 - **buffer_size** (float), Default: None. This will be described in more detail in the [Routine options](routine_options) section. It defines the size in Ångström of a small buffer of data attached around the edges of each interval, that can be used to avoid the effects of data-wrapping. None results in no attached buffer.
+
+
+
+```
+Next page [Routine options](routine_options)
+```
