@@ -20,3 +20,6 @@ By specifying a *save_path* and setting *save_all_results* to True in the **opti
 - Separated fluxes (\*sep_flux.txt)
 
 These outputs are designed to be conveniently used with the diagnostic plotting functions in the module `evaluate_ssr_results.py`.
+
+
+[Next Page: Evaluating output](evaluate)
