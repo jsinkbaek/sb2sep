@@ -73,9 +73,6 @@ limbd_B = estimate_linear_limbd(wavelength_RV_limit, logg_B, Teff_B, MH_B, mTur_
 template_spectrum_path_A = 'Data/template_spectra/5000_30_m05p00.ms.fits'
 template_spectrum_path_B = 'Data/template_spectra/5500_45_m05p00.ms.fits'
 
-# # Computation parameters # #
-number_of_parallel_jobs = 4     # for initial RV guess fits
-
 # # Prepare collection lists and arrays # #
 flux_collection_list = []
 wavelength_collection_list = []
@@ -119,8 +116,8 @@ for filename in os.listdir(data_path):
         wavelength_collection_list.append(wavelength)
         flux_collection_list.append(flux)
         i += 1
-print(spectral_separation_array_A)
-print(spectral_separation_array_B)
+# print(spectral_separation_array_A)
+# print(spectral_separation_array_B)
 
 
 # # Verify RA and DEC # #
