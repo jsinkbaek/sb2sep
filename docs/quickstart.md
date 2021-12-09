@@ -1,5 +1,5 @@
 # The Spectral Separation Routine
-The package is separated into multiple modules. The functions associated with the spectral separation is located in the module
+The package is separated into multiple modules. The functions associated with the spectral separation are located in the module
 
 ```
 spectral_separation_routine
