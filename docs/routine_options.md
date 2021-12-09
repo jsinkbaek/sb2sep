@@ -34,3 +34,35 @@ For `SeparateComponentsOptions`:
 
 Note: 4 of these parameters can affect which spectra are used in the separated component spectra, depending on which are provided. `rv_proximity_limit` is ranked the worst, and will be ignored if either `rv_lower_limit` or `use_for_spectral_separation_X` is provided. `rv_lower_limit` will also be ignored if `use_for_spectral_separation_X` is provided. Overall, it is recommended to manually select beforehand which spectra should be used, and which should not. The last parameter `weights` affects the spectra independently of the other. It is simply used to supply ANY constant weight to each of the spectra. This can serve a similar purpose as `use_for_spectral_separation_X`, or it can be used in conjunction with if desired. There might be a slight performance boost when using `use_for_spectral_separation_X` to skip calculation for some of the spectra.
 
+For `RadialVelocityOptions`:
+- **vsini_guess_A** (float), Default = 1.0. Guess for the fit parameter of vsini for component A, for the rotational broadening function profile fit. This will be modified by the parent routine after each iteration and set to the mean of all the spectra.
+- **vsini_guess_B** (float), Default = 1.0.
+- **vary_vsini_A** (bool), Default = True. If False, vsini will not be a free parameter during RV fit for component A.
+- **vary_vsini_B** (bool), Default = True.
+- **vsini_vary_limit_A** (float), Default = None. If provided, vsini_A can be changed only by `+- vsini_vary_limit_A*vsini_A` during next iteration. If not provided, parent routine will set it to 0.7 for stability.
+- **vsini_vary_limit_B** (float), Default = None.
+- **delta_v** (float), Default = 1.0. Must be same as for `SeparateComponentsOptions`.
+- **spectral_resolution** (float), Default = 60000. Provides the spectral resolution such that the BF fit can be appropriately broadened.
+- **velocity_fit_width_A** (float), Default = 50. How far away to include data during fitting of component A RV (in km/s). The rotational broadening function profile also separately masks the data using (velocity - rv)/vsini, which is worth keeping in mind.
+- **velocity_fit_width_B** (float), Default = 20.
+- **refit_width_A** (float), Default = None. If either this or `refit_width_B` is provided, will repeat fitting procedure afterwards with a smaller fitting width. This slows computation but can improve final precision on found RVs and might improve convergence.
+- **refit_width_B** (float), Default = None.
+- **limbd_coef_A** (float), Default = 0.68. Linear limb darkening parameter for fitting profile. Not of great importance for RV calculation.
+- **limbd_coef_B** (float), Default = 0.68.
+- **vary_limbd_coef_A** (bool), Default = False. If True, linear limb darkening coefficient will be a free parameter for component A fit.
+- **vary_limbd_coef_B** (bool), Default = False.
+- **RV_A** (numpy array shape (n_spectra, ), Default = None. Fitting routine will mask data using this and vsini with (velocity - rv)/vsini. Parent routine will set this automatically to provided RV guesses (and found RVs on successive iterations), so there is no reason to supply this manually.
+- **RV_B** (numpy array shape (n_spectra, ), Default = None.
+- **smooth_sigma_A** (float), Default = 4.0. Smoothing value in km/s to use when performing gaussian smoothing on the component A broadening function before fitting.
+- **smooth_sigma_B** (float), Default = 4.0
+- **bf_velocity_span** (float), Default = 200. The width of the broadening function in velocity space.
+- **period** (float), Default = None. Orbital period of the system. Must be supplied if eclipse masking is to be done, e.g. if one of the components should not be subtracted from the spectrum at specific phases.
+- **time_values** (numpy array shape (n_spectra, )), Default = None. Timestamps of all the spectra. Must be supplied if eclipse masking is to be done, e.g. if one of the components should not be subtracted from the spectrum at specific phases.
+- **ignore_at_phase_A** (tuple(float, float)), Default = None. If supplied, separated component A spectrum will not be subtracted from spectra used for component B RV if they are within specific phase interval (lower, upper). This interval can wrap around, e.g. (0.98, 0.02) is a valid interval. Make sure that the provided `time_values` has the same phase-shift when calculating phase with np.mod(time_values, period)/period.
+- **ignore_at_phase_B** (tuple(float, float)), Default = None. Same as previous, but opposite.
+- **verbose** (bool), Default = False. If True, extra prints are done.
+- **iteration_limit** (int), Default = 6. Maximum allowed iterations per spectrum for RV caculation subroutine. Amount is effectively doubled if `refit_width_X` is provided.
+- **convergence_limit** (float), Default = 5E-3. Convergence criterium for RV RMS.
+- **rv_lower_limit** (float), Default = 0.0. Used for plotting the limits in broadening function plots if `RoutineOptions.plot = True`.
+
+[`Next Page: Accessing outputs`](results)
