@@ -20,6 +20,6 @@ Modules:
 
 
 
-```
-Next page [Quick Start - Spectral Separation](quickstart)
-```
+
+[``` Next page Quick Start - Spectral Separation```](quickstart)
+
