@@ -25,5 +25,5 @@ Modules:
 A script utilizing the modules of this package to perform radial velocity measurements on KIC8430105 can be found at [github](https://github.com/jsinkbaek/sb2sep/blob/main/test/kic8430105/RV_from_spectra_kic8430105.py)
 
 
-[``` Next page: Installation```](installation)
+[Next page: Installation](installation)
 
