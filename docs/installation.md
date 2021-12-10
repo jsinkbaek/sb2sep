@@ -21,4 +21,4 @@ For test script also:
 
 
 
-[`Next page: The Spectral Separation Routine`](quickstart)
+[Next page: The Spectral Separation Routine](quickstart)
