@@ -32,5 +32,5 @@ The wrapper function `spectral_separation_routine_multiple_intervals` is similar
 
 
 
-[```Next page: Routine options```](routine_options)
+[Next page: Routine options](routine_options)
 
