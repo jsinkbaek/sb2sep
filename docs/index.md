@@ -11,14 +11,14 @@ This python package is designed with the goal of performing spectral separation 
 
 Modules:
 
-- [spectral_separation_routine](ssr)
-- [broadening_function_svd](bfsvd)
-- [spectral_processing_functions](spf)
-- [storage_classes](storage_classes)
-- [calculate_radial_velocities](calcRV)
-- [rotational_broadening_function_fitting](rotbf)
-- [linear_limbd_coeff_estimate](limbd)
-- [evaluate_ssr_results](evaluate)
+- spectral_separation_routine
+- broadening_function_svd
+- spectral_processing_functions
+- storage_classes
+- calculate_radial_velocities
+- rotational_broadening_function_fitting
+- linear_limbd_coeff_estimate
+- evaluate_ssr_results
 
 
 A script utilizing the modules of this package to perform radial velocity measurements on KIC8430105 can be found at [github](https://github.com/jsinkbaek/sb2sep/blob/main/test/kic8430105/RV_from_spectra_kic8430105.py)
