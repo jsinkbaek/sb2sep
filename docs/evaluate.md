@@ -39,4 +39,4 @@ Example rv plot:
 
 
 
-[`Next Page: Preparing spectra`](preparation)
+[Next Page: Preparing spectra](preparation)
