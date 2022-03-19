@@ -5,7 +5,7 @@ Please see the [documentation](https://jsinkbaek.github.io/sb2sep/) for a descri
 
 The package can be installed using pip:
 
-''pip install sb2sep''
+´pip install sb2sep´
 
 
 Requirements:
