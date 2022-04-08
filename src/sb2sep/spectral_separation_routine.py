@@ -173,14 +173,14 @@ def separate_component_spectra(
 
 def separate_component_spectra_orders(
         flux_order_collection, radial_velocity_collection_A, radial_velocity_collection_B,
-        options: SeparateComponentsOptions, overlap_weights
+        options: SeparateComponentsOptions, mask_collection_orders
 ):
     """
     Assumes flux_order_collection.shape = [wavelength.size, n_orders, n_spectra], where wavelength.size is the amount of
     elements in the equi-velocity-spaced interpolated wavelength grid for a merged spectrum.
     Each individual order should have the same amount of elements, but values outside the range must be = 1
-    overlap_weights.shape = [wavelength.size, n_orders, n_spectra].
-    overlap_weights must contain weights for each order to apply when merging overlapping orders.
+    mask_collection_orders.shape = [wavelength.size, n_orders, n_spectra]. dtype=bool. Each mask must remove values
+    outside of order range
     """
 
     n_spectra = flux_order_collection[0, 0, :].size
@@ -193,6 +193,10 @@ def separate_component_spectra_orders(
     weights = options.weights
     if weights is None:
         weights = np.ones(n_spectra)
+    overlap_weights_A, overlap_weights_B = _calculate_overlap(
+        mask_collection_orders, radial_velocity_collection_A, radial_velocity_collection_B, delta_v
+    )
+
     iteration_counter = 0
     while True:
         if iteration_counter == 0:
@@ -223,7 +227,7 @@ def separate_component_spectra_orders(
                         if radial_velocity_collection_A.ndims == 2:
                             rvA = radial_velocity_collection_A[j, i]
                             rvB = radial_velocity_collection_B[j, i]
-                        shifted_flux_A = 1-shift_spectrum(flux_order_collection[:, j, i]*overlap_weights[:, j, i],
+                        shifted_flux_A = 1-shift_spectrum(flux_order_collection[:, j, i]*overlap_weights_A[:, j, i],
                                                           -rvA, delta_v)
                         if options.ignore_component_B is False:
                             separated_flux_A += weights[i] * \
@@ -231,7 +235,7 @@ def separate_component_spectra_orders(
                                                                                  delta_v))
                         else:
                             separated_flux_A += weights[i] * shifted_flux_A
-                        overlap_mean += shift_spectrum(overlap_weights[:, j, i], -rvA, delta_v)
+                        overlap_mean += shift_spectrum(overlap_weights_A[:, j, i], -rvA, delta_v)
                     n_used_spectra += weights[i] * overlap_mean
             elif use_spectra_A != 0:
                 pass
@@ -265,11 +269,11 @@ def separate_component_spectra_orders(
                         if radial_velocity_collection_A.ndims == 2:
                             rvA = radial_velocity_collection_A[j, i]
                             rvB = radial_velocity_collection_B[j, i]
-                        shifted_flux_B = 1 - shift_spectrum(flux_order_collection[:, j, i]*overlap_weights[:, j, i],
+                        shifted_flux_B = 1 - shift_spectrum(flux_order_collection[:, j, i]*overlap_weights_B[:, j, i],
                                                             -rvB, delta_v)
                         separated_flux_B += weights[i] * \
                                             (shifted_flux_B - shift_spectrum(1-separated_flux_A, rvB-rvA, delta_v))
-                        overlap_mean += shift_spectrum(overlap_weights[:, j, i], -rvB, delta_v)
+                        overlap_mean += shift_spectrum(overlap_weights_B[:, j, i], -rvB, delta_v)
                     n_used_spectra += weights[i] * overlap_mean
             elif use_spectra_B.size != 0:
                 pass
@@ -295,6 +299,50 @@ def separate_component_spectra_orders(
         if options.verbose is True:
             print('n_spectra vs n_used_spectra: ', n_spectra, ' ', n_used_spectra)
         return separated_flux_A, separated_flux_B
+
+
+def _calculate_overlap(mask_collection_orders, RV_collection_A, RV_collection_B, delta_v):
+    overlap_weights_A = np.zeros(shape=mask_collection_orders.shape, dtype=float)
+    overlap_weights_B = np.zeros(shape=mask_collection_orders.shape, dtype=float)
+    n_orders = mask_collection_orders[0, :, 0].size
+    n_spectra = mask_collection_orders[0, 0, :].size
+    for i in range(0, n_spectra):
+        for j in range(0, n_orders):
+            temp = np.delete(mask_collection_orders[:, :, i], j, axis=1)
+
+            rva_temp = np.delete(RV_collection_A[:, i], j)
+            mask_A = np.roll(mask_collection_orders[:, j, i], int(np.round(-RV_collection_A[j, i]/delta_v)))
+            overlap_mask_A = np.zeros(mask_A.size, dtype=bool)
+            for k in range(0, n_orders-1):
+                mask_A_temp = np.roll(temp[:, k, i], int(np.round(-rva_temp[k, i]/delta_v)))
+                comb_mask = mask_A & mask_A_temp
+                overlap_mask_A = overlap_mask_A + comb_mask
+            overlap_weights_A[(mask_A & ~overlap_mask_A), j, i] = 1
+            mask_idx = np.argwhere(mask_A)
+            mask_lowhalf = mask_A; mask_lowhalf[mask_idx[mask_idx.size//2:]] = False
+            mask_highhalf = mask_A; mask_highhalf[mask_idx[0:mask_idx//2]] = False
+            overlap_mask_low = overlap_mask_A & mask_lowhalf
+            overlap_mask_high = overlap_mask_A & mask_highhalf
+            overlap_weights_A[overlap_mask_low, j, i] = np.linspace(0, 1, overlap_mask_low[overlap_mask_low].size)
+            overlap_weights_A[overlap_mask_high, j, i] = np.linspace(1, 0, overlap_mask_high[overlap_mask_high].size)
+
+            if RV_collection_B.ndims == 2:
+                rvb_temp = np.delete(RV_collection_B[:, i], j)
+                mask_B = np.roll(mask_collection_orders[:, j, i], int(np.round(RV_collection_B[j, i]/delta_v)))
+                overlap_mask_B = np.zeros(mask_B.size, dtype=bool)
+                for k in range(0, n_orders - 1):
+                    mask_B_temp = np.roll(temp[:, k, i], int(np.round(-rvb_temp[k, i] / delta_v)))
+                    comb_mask = mask_B & mask_B_temp
+                    overlap_mask_B = overlap_mask_B + comb_mask
+                overlap_weights_B[(mask_B & ~overlap_mask_B), j, i] = 1
+                mask_idx = np.argwhere(mask_B)
+                mask_lowhalf = mask_B; mask_lowhalf[mask_idx[mask_idx.size // 2:]] = False
+                mask_highhalf = mask_B; mask_highhalf[mask_idx[0:mask_idx // 2]] = False
+                overlap_mask_low = overlap_mask_B & mask_lowhalf
+                overlap_mask_high = overlap_mask_B & mask_highhalf
+                overlap_weights_B[overlap_mask_low, j, i] = np.linspace(0, 1, overlap_mask_low[overlap_mask_low].size)
+                overlap_weights_B[overlap_mask_high, j, i] = np.linspace(1, 0, overlap_mask_high[overlap_mask_high].size)
+    return overlap_weights_A, overlap_weights_B
 
 
 def _update_bf_plot(plot_ax, model, index):
@@ -530,7 +578,7 @@ def recalculate_RVs_orders(
 
                     # # Calculate RV_B # #
                     corrected_flux_B = (1-flux_collection_orders[:, j, i]) - \
-                                       (1-shift_spectrum(separated_flux_B, RV_collection_orders_A[j, i], delta_v))
+                                       (1-shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
                     if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
                         if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                             corrected_flux_B = 1-flux_collection_orders[:, j, i]
