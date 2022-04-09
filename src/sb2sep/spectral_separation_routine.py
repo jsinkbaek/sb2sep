@@ -198,7 +198,7 @@ def separate_component_spectra_orders(
     iteration_counter = 0
     while True:
         if iteration_counter == 0:
-            RMS_values_A = 0; RMS_values_B = 0
+            RMS_values_A = np.zeros(shape=separated_flux_A.shape); RMS_values_B = np.zeros(shape=separated_flux_B.shape)
         else:
             RMS_values_A = -separated_flux_A
             RMS_values_B = -separated_flux_B
@@ -207,7 +207,7 @@ def separate_component_spectra_orders(
         n_used_spectra = 0
         for i in range(0, n_spectra):
             if (use_spectra_A is None) or (i in use_spectra_A):
-                if radial_velocity_collection_A.ndims == 2:
+                if radial_velocity_collection_A.ndim == 2:
                     rvA = np.mean(radial_velocity_collection_A[:, i])
                     rvB = np.mean(radial_velocity_collection_B[:, i])
                 else:
@@ -222,7 +222,7 @@ def separate_component_spectra_orders(
                 if condition:
                     overlap_mean = np.zeros((separated_flux_A.size, ))
                     for j in range(0, n_orders):
-                        if radial_velocity_collection_A.ndims == 2:
+                        if radial_velocity_collection_A.ndim == 2:
                             rvA = radial_velocity_collection_A[j, i]
                             rvB = radial_velocity_collection_B[j, i]
                         shifted_flux_A = 1-shift_spectrum(flux_order_collection[:, j, i]*overlap_weights[:, j, i],
@@ -248,7 +248,7 @@ def separate_component_spectra_orders(
         n_used_spectra = 0
         for i in range(0, n_spectra):
             if (use_spectra_B is None) or (i in use_spectra_B):
-                if radial_velocity_collection_A.ndims == 2:
+                if radial_velocity_collection_A.ndim == 2:
                     rvA = np.mean(radial_velocity_collection_A[:, i])
                     rvB = np.mean(radial_velocity_collection_B[:, i])
                 else:
@@ -264,7 +264,7 @@ def separate_component_spectra_orders(
                 if condition:
                     overlap_mean = np.zeros((separated_flux_B.size,))
                     for j in range(0, n_orders):
-                        if radial_velocity_collection_A.ndims == 2:
+                        if radial_velocity_collection_A.ndim == 2:
                             rvA = radial_velocity_collection_A[j, i]
                             rvB = radial_velocity_collection_B[j, i]
                         shifted_flux_B = 1 - shift_spectrum(flux_order_collection[:, j, i]*overlap_weights[:, j, i],
@@ -306,10 +306,11 @@ def _calculate_overlap(mask_collection_orders):
     for i in range(0, n_spectra):
         for j in range(0, n_orders):
             other_masks = np.delete(mask_collection_orders[:, :, i], j, axis=1)
+            print(other_masks.shape)
             mask = mask_collection_orders[:, j, i]
             overlap_mask = np.zeros(mask.size, dtype=bool)
             for k in range(0, n_orders-1):
-                other_mask_temp = other_masks[:, k, i]
+                other_mask_temp = other_masks[:, k]
                 comb_mask = mask & other_mask_temp
                 overlap_mask = overlap_mask + comb_mask
             overlap_weights[(mask & ~overlap_mask), j, i] = 1.0
@@ -339,9 +340,9 @@ def _update_bf_plot(plot_ax, model, index):
 
 
 def recalculate_RVs(
-        inv_flux_collection: np.ndarray, inv_separated_flux_A: np.ndarray, inv_separated_flux_B: np.ndarray,
-        RV_collection_A: np.ndarray, RV_collection_B: np.ndarray, inv_flux_templateA: np.ndarray,
-        inv_flux_templateB: np.ndarray, buffer_mask: np.ndarray, options: RadialVelocityOptions,
+        flux_collection: np.ndarray, separated_flux_A: np.ndarray, separated_flux_B: np.ndarray,
+        RV_collection_A: np.ndarray, RV_collection_B: np.ndarray, flux_templateA: np.ndarray,
+        flux_templateB: np.ndarray, buffer_mask: np.ndarray, options: RadialVelocityOptions,
         plot_ax_A=None, plot_ax_B=None
 ):
     """
@@ -349,13 +350,13 @@ def recalculate_RVs(
     separate_component_spectra and recalculates RV values for each component using the corrected spectra (with one
     component removed).
 
-    :param inv_flux_collection: np.ndarray shape (:, n_spectra). Collection of inverted fluxes for the program spectra.
-    :param inv_separated_flux_A:    np.ndarray shape (:, ). Meaned inverted flux from separate_component_spectra() for A.
-    :param inv_separated_flux_B:    np.ndarray shape (:, ). Meaned inverted flux from separate_component_spectra() for B.
+    :param flux_collection: np.ndarray shape (:, n_spectra). Collection of normalized fluxes for the program spectra.
+    :param separated_flux_A:    np.ndarray shape (:, ). Meaned normalized flux from separate_component_spectra() for A.
+    :param separated_flux_B:    np.ndarray shape (:, ). Meaned normalized flux from separate_component_spectra() for B.
     :param RV_collection_A:     np.ndarray shape (n_spectra, ). Current RV values used to remove A from spectrum with.
     :param RV_collection_B:     np.ndarray shape (n_spectra, ). Current RV values used to remove B from spectrum with.
-    :param inv_flux_templateA:  np.ndarray shape (:, ). Template spectrum inverted flux for component A.
-    :param inv_flux_templateB:  np.ndarray shape (:, ). Template spectrum inverted flux for component B.
+    :param flux_templateA:  np.ndarray shape (:, ). Template spectrum normalized flux for component A.
+    :param flux_templateB:  np.ndarray shape (:, ). Template spectrum normalized flux for component B.
     :param buffer_mask:         np.ndarray shape (:, ). Mask used to remove "buffer" (or "padding") from spectrum.
                                     See spectral_separation_routine() for more info.
     :param options:             fitting and broadening function options
@@ -369,14 +370,14 @@ def recalculate_RVs(
     """
     RV_collection_A = deepcopy(RV_collection_A)
     RV_collection_B = deepcopy(RV_collection_B)
-    n_spectra = inv_flux_collection[0, :].size
+    n_spectra = flux_collection[0, :].size
     v_span = options.bf_velocity_span
     delta_v = options.delta_v
     BRsvd_template_A = BroadeningFunction(
-        inv_flux_collection[~buffer_mask, 0], inv_flux_templateA[~buffer_mask], v_span, delta_v
+        1-flux_collection[~buffer_mask, 0], 1-flux_templateA[~buffer_mask], v_span, delta_v
     )
     BRsvd_template_B = BroadeningFunction(
-        inv_flux_collection[~buffer_mask, 0], inv_flux_templateB[~buffer_mask], v_span, delta_v
+        1-flux_collection[~buffer_mask, 0], 1-flux_templateB[~buffer_mask], v_span, delta_v
     )
     BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
     BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
@@ -416,12 +417,12 @@ def recalculate_RVs(
 
                 # # Calculate RV_A # #
                 RMS_RV_A = -RV_collection_A[i]
-                corrected_flux_A = inv_flux_collection[:, i] - \
-                                   shift_spectrum(inv_separated_flux_B, RV_collection_B[i], delta_v)
+                corrected_flux_A = (1-flux_collection[:, i]) - \
+                                   shift_spectrum(1-separated_flux_B, RV_collection_B[i], delta_v)
 
                 if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
                     if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
-                        corrected_flux_A = inv_flux_collection[:, i]
+                        corrected_flux_A = 1-flux_collection[:, i]
 
                 corrected_flux_A = corrected_flux_A[~buffer_mask]
 
@@ -441,12 +442,12 @@ def recalculate_RVs(
 
                 # # Calculate RV_B # #
                 RMS_RV_B = -RV_collection_B[i]
-                corrected_flux_B = inv_flux_collection[:, i] - \
-                                   shift_spectrum(inv_separated_flux_A, RV_collection_A[i], delta_v)
+                corrected_flux_B = (1-flux_collection[:, i]) - \
+                                   shift_spectrum(1-separated_flux_A, RV_collection_A[i], delta_v)
 
                 if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
                     if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
-                        corrected_flux_B = inv_flux_collection[:, i]
+                        corrected_flux_B = 1-flux_collection[:, i]
 
                 corrected_flux_B = corrected_flux_B[~buffer_mask]
 
@@ -579,7 +580,7 @@ def recalculate_RVs_orders(
                     )
                 RMS_RV_A = np.sqrt(np.sum((RMS_RV_A + RV_collection_orders_A[i])**2)/RMS_RV_A.size)
                 RMS_RV_B = np.sqrt(np.sum((RMS_RV_B + RV_collection_orders_B[i])**2)/RMS_RV_B.size)
-                if RMS_RV_A < options.convergence_limit and RMS_RV_A < options.convergence_limit:
+                if RMS_RV_A < options.convergence_limit and RMS_RV_B < options.convergence_limit:
                     break
                 elif iterations > options.iteration_limit:
                     if k == 1 and options.verbose is True:
@@ -682,7 +683,7 @@ def spectral_separation_routine(
         flux_collection: np.ndarray, flux_templateA: np.ndarray, flux_templateB: np.ndarray,
         wavelength: np.ndarray,
         options: RoutineOptions, sep_comp_options: SeparateComponentsOptions, rv_options: RadialVelocityOptions,
-        RV_guess_collection: np.ndarray
+        RV_guess_collection: np.ndarray, mask_collection_orders=None
 ):
     """
     Routine that separates component spectra and calculates radial velocities by iteratively calling
@@ -713,6 +714,8 @@ def spectral_separation_routine(
         calculation, and not for spectral separation.
 
     :param flux_collection:   np.ndarray shape (:, n_spectra). Collection of normalized fluxes for each spectrum.
+                                        if ndims=3, assumes shape (:, n_orders, n_spectra) containing independent orders
+                                        Then mask_collection_orders must be supplied as well
     :param flux_templateA:    np.ndarray shape (:, ). Normalized flux of template spectrum for component A.
     :param flux_templateB:    np.ndarray shape (:, ). Normalized flux of template spectrum for component B.
     :param wavelength:            np.ndarray shape (:, ). Wavelength values for the spectra (both program and template).
@@ -759,17 +762,37 @@ def spectral_separation_routine(
             RV_mask = np.abs(RV_collection_A-RV_collection_B) > sep_comp_options.rv_proximity_limit
         else:
             RV_mask = np.abs(RV_collection_A) > sep_comp_options.rv_lower_limit
-        RMS_A, RMS_B = -RV_collection_A, -RV_collection_B[RV_mask]
 
-        separated_flux_A, separated_flux_B = separate_component_spectra(
-            flux_collection, RV_collection_A, RV_collection_B, sep_comp_options
-        )
+        if RV_collection_A.ndim == 2:
+            RMS_A, RMS_B = -np.mean(RV_collection_A, axis=0), -np.mean(RV_collection_B, axis=0)[RV_mask]
+        else:
+            RMS_A, RMS_B = -RV_collection_A, -RV_collection_B[RV_mask]
 
-        RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs(
-            1-flux_collection, 1-separated_flux_A, 1-separated_flux_B, RV_collection_A, RV_collection_B,
-            1-flux_templateA, 1-flux_templateB, buffer_mask, rv_options, plot_ax_A=f3_ax1,
-            plot_ax_B=f4_ax1
-        )
+        if flux_collection.ndim == 3:
+            separated_flux_A, separated_flux_B = separate_component_spectra_orders(
+                flux_collection, RV_collection_A, RV_collection_B, sep_comp_options, mask_collection_orders
+            )
+        else:
+            separated_flux_A, separated_flux_B = separate_component_spectra(
+                flux_collection, RV_collection_A, RV_collection_B, sep_comp_options
+            )
+
+        if flux_collection.ndim == 3:
+            if RV_collection_A.ndim == 1:
+                RV_collection_A = RV_collection_A.reshape((1, RV_collection_A.size))
+                RV_collection_B = RV_collection_B.reshape((1, RV_collection_B.size))
+                RV_collection_A = np.repeat(RV_collection_A, axis=0, repeats=flux_collection[0, :, 0].size)
+                RV_collection_B = np.repeat(RV_collection_B, axis=0, repeats=flux_collection[0, :, 0].size)
+            RV_collection_A, RV_collection_B = recalculate_RVs_orders(
+                flux_collection, mask_collection_orders, separated_flux_A, separated_flux_B, RV_collection_A,
+                RV_collection_B, flux_templateA, flux_templateB, rv_options
+            )
+        else:
+            RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs(
+                flux_collection, separated_flux_A, separated_flux_B, RV_collection_A, RV_collection_B,
+                flux_templateA, flux_templateB, buffer_mask, rv_options, plot_ax_A=f3_ax1,
+                plot_ax_B=f4_ax1
+            )
 
         if options.plot:
             _plot_ssr_iteration(
@@ -794,10 +817,16 @@ def spectral_separation_routine(
             print('vsini B: ', rv_options.vsini_B)
 
         iterations += 1
-        RMS_A += RV_collection_A
-        RMS_B += RV_collection_B[RV_mask]
-        RMS_A = np.sqrt(np.sum(RMS_A**2)/RV_collection_A.size)
-        RMS_B = np.sqrt(np.sum(RMS_B**2)/RV_collection_B[RV_mask].size)
+        if RV_collection_A.ndim == 2:
+            RMS_A += np.mean(RV_collection_A, axis=0)
+            RMS_B += np.mean(RV_collection_B, axis=0)[RV_mask]
+            RMS_A = np.sqrt(np.sum(RMS_A**2)/np.mean(RV_collection_A, axis=0).size)
+            RMS_B = np.sqrt(np.sum(RMS_B**2)/np.mean(RV_collection_B, axis=0)[RV_mask].size)
+        else:
+            RMS_A += RV_collection_A
+            RMS_B += RMS_B
+            RMS_A = np.sqrt(np.sum(RMS_A**2))/RV_collection_A.size
+            RMS_B = np.sqrt(np.sum(RMS_B**2))/RV_collection_B[RV_mask].size
         if options.verbose:
             print(f'RV_A RMS: {RMS_A}. ' + f'RV_B RMS: {RMS_B}.')
         if RMS_A < convergence_limit and RMS_B < convergence_limit:
