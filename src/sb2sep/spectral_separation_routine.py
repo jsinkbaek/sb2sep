@@ -173,7 +173,7 @@ def separate_component_spectra(
 
 def separate_component_spectra_orders(
         flux_order_collection, radial_velocity_collection_A, radial_velocity_collection_B,
-        options: SeparateComponentsOptions, mask_collection_orders
+        options: SeparateComponentsOptions, overlap_weights
 ):
     """
     Assumes flux_order_collection.shape = [wavelength.size, n_orders, n_spectra], where wavelength.size is the amount of
@@ -193,7 +193,6 @@ def separate_component_spectra_orders(
     weights = options.weights
     if weights is None:
         weights = np.ones(n_spectra)
-    overlap_weights = _calculate_overlap(mask_collection_orders)
 
     iteration_counter = 0
     while True:
@@ -548,14 +547,20 @@ def recalculate_RVs_orders(
                         options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
                         options.vsini_vary_limit_A, options.vary_limbd_coef_A, options.RV_A
                     )
+                    print(mask_collection_orders[:, j, i].shape)
+                    template_shifted = shift_spectrum(      # shift template to reduce boundary issues
+                        flux_templateA[mask_collection_orders[:, j, i]], RV_collection_orders_A[j, i], delta_v
+                    )
                     BRsvd_template_A = BroadeningFunction(
-                        1 - flux_collection_orders[mask_collection_orders[:, j, i], j, i],
-                        1 - flux_templateA[mask_collection_orders[:, j, i]], v_span, delta_v
+                        corrected_flux_A,
+                        1 - template_shifted,
+                        v_span, delta_v
                     )
                     BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
-                    RV_collection_orders_A[j, i], model_A = radial_velocity_single_component(
+                    rva_temp, model_A = radial_velocity_single_component(
                         corrected_flux_A, BRsvd_template_A, ifitparams_A
                     )
+                    RV_collection_orders_A[j, i] = rva_temp + RV_collection_orders_A[j, i]
 
                     # # Calculate RV_B # #
                     corrected_flux_B = (1-flux_collection_orders[:, j, i]) - \
@@ -570,14 +575,18 @@ def recalculate_RVs_orders(
                         options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
                         options.vsini_vary_limit_B, options.vary_limbd_coef_B, options.RV_B
                     )
+                    template_shifted = shift_spectrum(
+                        flux_templateB[mask_collection_orders[:, j, i]], RV_collection_orders_B[j, i], delta_v
+                    )
                     BRsvd_template_B = BroadeningFunction(
-                        1 - flux_collection_orders[mask_collection_orders[:, j, i], j, i],
-                        1 - flux_templateB[mask_collection_orders[:, j, i]], v_span, delta_v
+                        corrected_flux_B,
+                        1 - template_shifted, v_span, delta_v
                     )
                     BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
-                    RV_collection_orders_B[j, i], model_B = radial_velocity_single_component(
+                    rvb_temp, model_B = radial_velocity_single_component(
                         corrected_flux_B, BRsvd_template_B, ifitparams_B
                     )
+                    RV_collection_orders_B[j, i] = rvb_temp + RV_collection_orders_B[j, i]
                 RMS_RV_A = np.sqrt(np.sum((RMS_RV_A + RV_collection_orders_A[i])**2)/RMS_RV_A.size)
                 RMS_RV_B = np.sqrt(np.sum((RMS_RV_B + RV_collection_orders_B[i])**2)/RMS_RV_B.size)
                 if RMS_RV_A < options.convergence_limit and RMS_RV_B < options.convergence_limit:
@@ -753,6 +762,9 @@ def spectral_separation_routine(
     else:
         f1_ax1 = None; f1_ax2 = None; f1_ax3 = None; f3_ax1 = None; f4_ax1 = None
 
+    if flux_collection.ndim == 3:
+        overlap_weights = _calculate_overlap(mask_collection_orders)
+
     # Iterative loop that repeatedly separates the spectra from each other in order to calculate new RVs (Gonzales 2005)
     iterations = 0
     print('Spectral Separation: ')
@@ -770,7 +782,7 @@ def spectral_separation_routine(
 
         if flux_collection.ndim == 3:
             separated_flux_A, separated_flux_B = separate_component_spectra_orders(
-                flux_collection, RV_collection_A, RV_collection_B, sep_comp_options, mask_collection_orders
+                flux_collection, RV_collection_A, RV_collection_B, sep_comp_options, overlap_weights
             )
         else:
             separated_flux_A, separated_flux_B = separate_component_spectra(

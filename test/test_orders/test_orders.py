@@ -8,7 +8,7 @@ sep_spectra = np.loadtxt('../kic8430105/results/4500_5825_sep_flux.txt')
 wl = sep_spectra[:, 0]
 flux = sep_spectra[:, 1]
 template = sep_spectra[:, 3]
-if np.mod(wl.size, 2) == 0.0:
+if np.mod(wl.size, 2) != 0.0:
     wl = wl[:-1]
     flux = flux[:-1]
     template = template[:-1]
