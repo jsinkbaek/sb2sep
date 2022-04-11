@@ -11,6 +11,7 @@ same author. Both follows the formula layout of the article:
 'Separation of composite spectra: the spectroscopic detecton of an eclipsing binary star'
         by J.F. Gonzalez and H. Levato ( A&A 448, 283-292(2006) )
 """
+import matplotlib.pyplot as plt
 
 from src.sb2sep.calculate_radial_velocities import radial_velocity_single_component
 from src.sb2sep.broadening_function_svd import *
@@ -185,8 +186,8 @@ def separate_component_spectra_orders(
 
     n_spectra = flux_order_collection[0, 0, :].size
     n_orders = flux_order_collection[0, :, 0].size
-    separated_flux_B = np.zeros((flux_order_collection[:, 0, 0].size, ))
-    separated_flux_A = np.zeros((flux_order_collection[:, 0, 0].size, ))
+    separated_flux_B = np.ones((flux_order_collection[:, 0, 0].size, ))
+    separated_flux_A = np.ones((flux_order_collection[:, 0, 0].size, ))
     use_spectra_A = options.use_for_spectral_separation_A
     use_spectra_B = options.use_for_spectral_separation_B
     delta_v = options.delta_v
@@ -224,14 +225,13 @@ def separate_component_spectra_orders(
                         if radial_velocity_collection_A.ndim == 2:
                             rvA = radial_velocity_collection_A[j, i]
                             rvB = radial_velocity_collection_B[j, i]
-                        shifted_flux_A = 1-shift_spectrum(flux_order_collection[:, j, i]*overlap_weights[:, j, i],
-                                                          -rvA, delta_v)
+                        shifted_flux_A = shift_spectrum(1-flux_order_collection[:, j, i]*overlap_weights[:, j, i],
+                                                        -rvA, delta_v)
                         if options.ignore_component_B is False:
-                            separated_flux_A += weights[i] * \
-                                                (shifted_flux_A - shift_spectrum(1 - separated_flux_B, rvB - rvA,
-                                                                                 delta_v))
+                            shift_sep_B = shift_spectrum(overlap_weights[:, j, i]*(1-separated_flux_B), rvB-rvA, delta_v)
+                            separated_flux_A += 1-(weights[i] * (shifted_flux_A - shift_sep_B))
                         else:
-                            separated_flux_A += weights[i] * shifted_flux_A
+                            separated_flux_A += weights[i] * (1-shifted_flux_A)
                         overlap_mean += shift_spectrum(overlap_weights[:, j, i], -rvA, delta_v)
                     n_used_spectra += weights[i] * overlap_mean
             elif use_spectra_A != 0:
@@ -241,7 +241,7 @@ def separate_component_spectra_orders(
                     f'use_spectra_A is either of wrong type ({type(use_spectra_A)}), empty, or wrong value.\n' +
                     f'Expected type: {type(True)} or np.ndarray. Expected value if bool: True'
                 )
-        separated_flux_A = (1-separated_flux_A)/n_used_spectra
+        separated_flux_A = separated_flux_A/n_used_spectra
 
         separated_flux_B[:] = 0.0
         n_used_spectra = 0
@@ -266,10 +266,10 @@ def separate_component_spectra_orders(
                         if radial_velocity_collection_A.ndim == 2:
                             rvA = radial_velocity_collection_A[j, i]
                             rvB = radial_velocity_collection_B[j, i]
-                        shifted_flux_B = 1 - shift_spectrum(flux_order_collection[:, j, i]*overlap_weights[:, j, i],
-                                                            -rvB, delta_v)
-                        separated_flux_B += weights[i] * \
-                                            (shifted_flux_B - shift_spectrum(1-separated_flux_A, rvB-rvA, delta_v))
+                        shifted_flux_B = shift_spectrum(1-flux_order_collection[:, j, i]*overlap_weights[:, j, i],
+                                                        -rvB, delta_v)
+                        shift_sep_A = shift_spectrum(overlap_weights[:, j, i]*(1-separated_flux_A), rvB-rvA, delta_v)
+                        separated_flux_B += 1- weights[i] * (shifted_flux_B - shift_sep_A)
                         overlap_mean += shift_spectrum(overlap_weights[:, j, i], -rvB, delta_v)
                     n_used_spectra += weights[i] * overlap_mean
             elif use_spectra_B.size != 0:
@@ -278,24 +278,31 @@ def separate_component_spectra_orders(
                 raise TypeError(
                     f'use_spectra_B is either of wrong type ({type(use_spectra_B)}), empty, or wrong value.\n' +
                     f'Expected type: {type(True)} or np.ndarray. Expected value if bool: True')
-            separated_flux_B = (1-separated_flux_B)/n_used_spectra
 
-            RMS_A = np.sum(RMS_values_A ** 2) / RMS_values_A.size
-            RMS_B = np.sum(RMS_values_B ** 2) / RMS_values_B.size
-            if RMS_A < options.convergence_limit and RMS_B < options.convergence_limit:
-                if options.verbose is True:
-                    print(f'Separate Component Spectra: Convergence limit of {options.convergence_limit} successfully '
-                          f'reached in {iteration_counter} iterations. \nReturning last separated spectra.')
-                break
-            elif iteration_counter >= options.max_iterations:
-                warnings.warn(
-                    f'Warning: Iteration limit of {options.max_iterations} reached without reaching convergence '
-                    f'limit of {options.convergence_limit}. \nCurrent RMS_A: {RMS_A}. RMS_B: {RMS_B} \n'
-                    'Returning last separated spectra.')
-                break
-        if options.verbose is True:
-            print('n_spectra vs n_used_spectra: ', n_spectra, ' ', n_used_spectra)
-        return separated_flux_A, separated_flux_B
+        separated_flux_B = separated_flux_B/n_used_spectra
+
+        RMS_values_A += separated_flux_A
+        RMS_values_B += separated_flux_B
+        RMS_values_A = RMS_values_A[~np.isnan(RMS_values_A)]
+        RMS_values_B = RMS_values_B[~np.isnan(RMS_values_B)]
+        RMS_A = np.sum(RMS_values_A ** 2) / RMS_values_A.size
+        RMS_B = np.sum(RMS_values_B ** 2) / RMS_values_B.size
+        if RMS_A < options.convergence_limit and RMS_B < options.convergence_limit:
+            if options.verbose is True:
+                print(f'Separate Component Spectra: Convergence limit of {options.convergence_limit} successfully '
+                      f'reached in {iteration_counter} iterations. \nReturning last separated spectra.')
+            break
+        elif iteration_counter >= options.max_iterations:
+            warnings.warn(
+                f'Warning: Iteration limit of {options.max_iterations} reached without reaching convergence '
+                f'limit of {options.convergence_limit}. \nCurrent RMS_A: {RMS_A}. RMS_B: {RMS_B} \n'
+                'Returning last separated spectra.')
+            break
+    if options.verbose is True:
+        print('n_spectra vs n_used_spectra: ', n_spectra, ' ', n_used_spectra)
+    separated_flux_A[np.isnan(separated_flux_A)] = 1.0
+    separated_flux_B[np.isnan(separated_flux_B)] = 1.0
+    return separated_flux_A, separated_flux_B
 
 
 def _calculate_overlap(mask_collection_orders):
@@ -305,7 +312,6 @@ def _calculate_overlap(mask_collection_orders):
     for i in range(0, n_spectra):
         for j in range(0, n_orders):
             other_masks = np.delete(mask_collection_orders[:, :, i], j, axis=1)
-            print(other_masks.shape)
             mask = mask_collection_orders[:, j, i]
             overlap_mask = np.zeros(mask.size, dtype=bool)
             for k in range(0, n_orders-1):
@@ -517,6 +523,8 @@ def recalculate_RVs_orders(
     krange = 1
 
     for i in range(0, n_spectra):
+        if options.verbose:
+            print(f'RV: spectrum {i}.')
         if options.refit_width_A is not None or options.refit_width_B is not None:
             krange = 2
         else:
@@ -529,10 +537,10 @@ def recalculate_RVs_orders(
                 options.velocity_fit_width_A = options.refit_width_A
                 options.velocity_fit_width_B = options.refit_width_B
             iterations = 0
+            RV_deviation_A = np.ones((RV_collection_orders_A[:, 0].size, ))
+            RV_deviation_B = np.ones((RV_collection_orders_B[:, 0].size, ))
             while True:
                 iterations += 1
-                RMS_RV_A = -RV_collection_orders_A[:, i]
-                RMS_RV_B = -RV_collection_orders_B[:, i]
                 for j in range(0, n_orders):
                     # # Calculate RV_A # #
                     corrected_flux_A = (1-flux_collection_orders[:, j, i]) - \
@@ -547,19 +555,20 @@ def recalculate_RVs_orders(
                         options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
                         options.vsini_vary_limit_A, options.vary_limbd_coef_A, options.RV_A
                     )
-                    print(mask_collection_orders[:, j, i].shape)
                     template_shifted = shift_spectrum(      # shift template to reduce boundary issues
-                        flux_templateA[mask_collection_orders[:, j, i]], RV_collection_orders_A[j, i], delta_v
-                    )
+                        flux_templateA, RV_collection_orders_A[j, i], delta_v
+                    )[mask_collection_orders[:, j, i]]
                     BRsvd_template_A = BroadeningFunction(
                         corrected_flux_A,
-                        1 - template_shifted,
+                        1-template_shifted,
                         v_span, delta_v
                     )
                     BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
+                    ifitparams_A.RV = 0.0
                     rva_temp, model_A = radial_velocity_single_component(
                         corrected_flux_A, BRsvd_template_A, ifitparams_A
                     )
+                    RV_deviation_A[j] = rva_temp
                     RV_collection_orders_A[j, i] = rva_temp + RV_collection_orders_A[j, i]
 
                     # # Calculate RV_B # #
@@ -583,20 +592,25 @@ def recalculate_RVs_orders(
                         1 - template_shifted, v_span, delta_v
                     )
                     BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
+                    ifitparams_B.RV = 0.0
                     rvb_temp, model_B = radial_velocity_single_component(
                         corrected_flux_B, BRsvd_template_B, ifitparams_B
                     )
+                    RV_deviation_B[j] = rvb_temp
                     RV_collection_orders_B[j, i] = rvb_temp + RV_collection_orders_B[j, i]
-                RMS_RV_A = np.sqrt(np.sum((RMS_RV_A + RV_collection_orders_A[i])**2)/RMS_RV_A.size)
-                RMS_RV_B = np.sqrt(np.sum((RMS_RV_B + RV_collection_orders_B[i])**2)/RMS_RV_B.size)
-                if RMS_RV_A < options.convergence_limit and RMS_RV_B < options.convergence_limit:
+                print(f'RV deviation: {np.abs(np.mean(RV_deviation_A)):.{options.print_prec}f} (A) {np.abs(np.mean(RV_deviation_B)):.{options.print_prec}f} (B)')
+                if np.abs(np.mean(RV_deviation_A)) < options.convergence_limit and \
+                        np.abs(np.mean(RV_deviation_B)) < options.convergence_limit:
+                    if options.verbose:
+                        print(f'RV: spectrum {i} successful.')
                     break
                 elif iterations > options.iteration_limit:
-                    if k == 1 and options.verbose is True:
-                        warnings.warn(
-                            f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'
-                        )
-                        break
+                    if k == 1 or (options.refit_width_B is None and options.refit_width_A is None):
+                        if options.verbose is True:
+                            warnings.warn(
+                                f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'
+                            )
+                    break
     if krange == 2:
         options.velocity_fit_width_A = fit_width_A
         options.velocity_fit_width_B = fit_width_B

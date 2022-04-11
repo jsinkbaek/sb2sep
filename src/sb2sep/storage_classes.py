@@ -65,7 +65,8 @@ class RadialVelocityOptions:
             verbose=False,
             iteration_limit=6,
             convergence_limit=5e-3,
-            rv_lower_limit=0.0
+            rv_lower_limit=0.0,
+            print_prec=6
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini_A = vsini_guess_A
@@ -120,6 +121,8 @@ class RadialVelocityOptions:
 
         self.rv_lower_limit = rv_lower_limit
 
+        self.print_prec = print_prec
+
 
 class SeparateComponentsOptions:
     def __init__(
@@ -159,7 +162,7 @@ class RoutineOptions:
             save_plot_path=None,
             save_all_results=True,
             save_path='./',
-            buffer_mask=None
+            buffer_mask=None,
     ):
         self.time_values = time_values
         self.convergence_limit = convergence_limit
