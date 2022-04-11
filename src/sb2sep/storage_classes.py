@@ -163,6 +163,7 @@ class RoutineOptions:
             save_all_results=True,
             save_path='./',
             buffer_mask=None,
+            filename_bulk=None
     ):
         self.time_values = time_values
         self.convergence_limit = convergence_limit
@@ -174,3 +175,4 @@ class RoutineOptions:
         self.save_all_results = save_all_results
         self.save_path = save_path
         self.buffer_mask = buffer_mask
+        self.filename_bulk = filename_bulk

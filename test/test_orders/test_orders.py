@@ -33,14 +33,15 @@ flux_collection = flux_collection / 2
 rv_options = RadialVelocityOptions(
     vsini_guess_A=4.0, vsini_guess_B=4.0, delta_v=1.0, spectral_resolution=67000, velocity_fit_width_A=10.0,
     velocity_fit_width_B=10.0, limbd_coef_A=0.68, limbd_coef_B=0.68,
-    smooth_sigma_B=2.0, smooth_sigma_A=2.0, bf_velocity_span=200, iteration_limit=5, convergence_limit=5e-3,
-    verbose=True
+    smooth_sigma_B=2.0, smooth_sigma_A=2.0, bf_velocity_span=200, iteration_limit=3, convergence_limit=1e-2,
+    verbose=True, time_values=np.linspace(0, 1, 10), period=1.0
 )
 sep_comp_options = SeparateComponentsOptions(
     delta_v=1.0, convergence_limit=1e-2, max_iterations=10, rv_proximity_limit=5.0
 )
 routine_options = RoutineOptions(
-    convergence_limit=1e-5, iteration_limit=2, plot=False, save_all_results=False
+    convergence_limit=1e-5, iteration_limit=2, plot=True, save_all_results=True, time_values=np.linspace(0, 1, 10),
+    save_path='./', filename_bulk='test_'
 )
 
 RV_guess = np.empty((10, 2))
