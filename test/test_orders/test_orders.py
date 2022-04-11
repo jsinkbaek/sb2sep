@@ -34,7 +34,7 @@ rv_options = RadialVelocityOptions(
     vsini_guess_A=4.0, vsini_guess_B=4.0, delta_v=1.0, spectral_resolution=67000, velocity_fit_width_A=10.0,
     velocity_fit_width_B=10.0, limbd_coef_A=0.68, limbd_coef_B=0.68,
     smooth_sigma_B=2.0, smooth_sigma_A=2.0, bf_velocity_span=200, iteration_limit=3, convergence_limit=1e-2,
-    verbose=True, time_values=np.linspace(0, 1, 10), period=1.0
+    verbose=True, time_values=np.linspace(0, 1, 10), period=1.
 )
 sep_comp_options = SeparateComponentsOptions(
     delta_v=1.0, convergence_limit=1e-2, max_iterations=10, rv_proximity_limit=5.0
@@ -57,4 +57,3 @@ print(mask_orders[mask_orders[:, 0, 0], 0, 0].size)
 results = ssr.spectral_separation_routine(
     flux_collection, template, template, wl, routine_options, sep_comp_options, rv_options, RV_guess, mask_orders
 )
-print(results)

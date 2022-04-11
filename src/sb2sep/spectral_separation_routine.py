@@ -527,7 +527,7 @@ def recalculate_RVs_orders(
 
     for i in range(0, n_spectra):
         if options.verbose:
-            print(f'RV: spectrum {i}.')
+            print(f'RV: spectrum {i} begun.')
         if options.refit_width_A is not None or options.refit_width_B is not None:
             krange = 2
         else:
@@ -601,7 +601,7 @@ def recalculate_RVs_orders(
                     )
                     RV_deviation_B[j] = rvb_temp
                     RV_collection_orders_B[j, i] = rvb_temp + RV_collection_orders_B[j, i]
-                print(f'RV deviation: {np.abs(np.mean(RV_deviation_A)):.{options.print_prec}f} (A) {np.abs(np.mean(RV_deviation_B)):.{options.print_prec}f} (B)')
+                print(f'RV dev spec {i}: {np.abs(np.mean(RV_deviation_A)):.{options.print_prec}f} (A) {np.abs(np.mean(RV_deviation_B)):.{options.print_prec}f} (B)')
                 if np.abs(np.mean(RV_deviation_A)) < options.convergence_limit and \
                         np.abs(np.mean(RV_deviation_B)) < options.convergence_limit:
                     if options.verbose:
@@ -846,7 +846,7 @@ def spectral_separation_routine(
         if flux_collection.ndim == 3:
             RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs_orders(
                 flux_collection, mask_collection_orders, separated_flux_A, separated_flux_B, RV_collection_A,
-                RV_collection_B, flux_templateA, flux_templateB, rv_options
+                RV_collection_B, flux_templateA, flux_templateB, rv_options, plot_ax_A=f3_ax1, plot_ax_B=f4_ax1
             )
         else:
             RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs(
@@ -908,8 +908,8 @@ def spectral_separation_routine(
     if options.save_all_results is True:
         save_separation_data(
             options.save_path, wavelength[~buffer_mask], rv_options.time_values, RV_collection_A,
-            RV_collection_B, RV_guess_collection, 1-separated_flux_A[~buffer_mask], 1-separated_flux_B[~buffer_mask],
-            bf_fitres_A, bf_fitres_B, 1-flux_templateA[~buffer_mask], 1-flux_templateB[~buffer_mask]
+            RV_collection_B, RV_guess_collection, separated_flux_A[~buffer_mask], separated_flux_B[~buffer_mask],
+            bf_fitres_A, bf_fitres_B, flux_templateA[~buffer_mask], flux_templateB[~buffer_mask], options
         )
 
     if options.save_plot_path is not None:
@@ -927,21 +927,21 @@ def save_separation_data(
         bf_fitres_B, template_flux_A, template_flux_B, options: RoutineOptions
 ):
     if options.filename_bulk is None:
-        filename_bulk = str(int(np.round(np.min(wavelength)))) + '_' + str(int(np.round(np.max(wavelength)))) + '_'
+        filename_bulk = str(int(np.round(np.min(wavelength)))) + '_' + str(int(np.round(np.max(wavelength))))
     else:
         filename_bulk = options.filename_bulk
 
     if RVs_A.ndim == 2:
         rvA_array = np.empty((RVs_A[0, :].size, 1+RVs_A[:, 0].size))
         rvA_array[:, 0] = time_values
-        rvA_array[:, 1:] = RVs_A
+        rvA_array[:, 1:] = RVs_A.T
     else:
         rvA_array = np.empty((RVs_A.size, 2))
         rvA_array[:, 0], rvA_array[:, 1] = time_values, RVs_A
     if RVs_B.ndim == 2:
         rvB_array = np.empty((RVs_B[0, :].size, 1+RVs_B[:, 0].size))
         rvB_array[:, 0] = time_values
-        rvB_array[:, 1:] = RVs_B
+        rvB_array[:, 1:] = RVs_B.T
     else:
         rvB_array = np.empty((RVs_B.size, 2))
         rvB_array[:, 0], rvB_array[:, 1] = time_values, RVs_B
@@ -950,13 +950,25 @@ def save_separation_data(
     sep_array[:, 0], sep_array[:, 1], sep_array[:, 2] = wavelength, separated_flux_A, separated_flux_B
     sep_array[:, 3], sep_array[:, 4] = template_flux_A, template_flux_B
 
-    np.savetxt(location + filename_bulk + 'rvA.txt', rvA_array, header='Time [input units] \t RV_A [km/s] orders',
-               fmt=('%.9f', '%.6f'))
-    np.savetxt(location + filename_bulk + 'rv_initial.txt', RVs_initial, header='RV_A [km/s] \t RV_B [km/s]',
+    if RVs_A.ndim == 2:
+        fmt_tuple_A = ['%.6f' for x in range(0, RVs_A[:, 0].size)]
+        fmt_tuple_A = ['%.9f'] + fmt_tuple_A
+        fmt_tuple_A = tuple(fmt_tuple_A)
+    else:
+        fmt_tuple_A = ('%.9f', '%.6f')
+    if RVs_B.ndim == 2:
+        fmt_tuple_B = ['%.6f' for x in range(0, RVs_B[:, 0].size)]
+        fmt_tuple_B = ['%.9f'] + fmt_tuple_B
+        fmt_tuple_B = tuple(fmt_tuple_B)
+    else:
+        fmt_tuple_B = ('%.9f', '%.6f')
+    np.savetxt(location + filename_bulk + '_rvA.txt', rvA_array, header='Time [input units] \t RV_A [km/s] orders',
+               fmt=fmt_tuple_A)
+    np.savetxt(location + filename_bulk + '_rv_initial.txt', RVs_initial, header='RV_A [km/s] \t RV_B [km/s]',
                fmt='%.6f')
-    np.savetxt(location + filename_bulk + 'rvB.txt', rvB_array, header='Time [input units] \t RV_B [km/s] orders',
-               fmt=('%.9f', '%.6f'))
-    np.savetxt(location + filename_bulk + 'sep_flux.txt', sep_array, header='flux_A \t flux_B', fmt='%.6f')
+    np.savetxt(location + filename_bulk + '_rvB.txt', rvB_array, header='Time [input units] \t RV_B [km/s] orders',
+               fmt=fmt_tuple_B)
+    np.savetxt(location + filename_bulk + '_sep_flux.txt', sep_array, header='flux_A \t flux_B', fmt='%.6f')
 
     if bf_fitres_A.ndim == 2:
         for j in range(0, bf_fitres_A[:, 0].size):
@@ -970,12 +982,12 @@ def save_separation_data(
                 bf_array[i, :] = bf_vals_A
                 bf_smooth_array[i, :] = smooth_vals_A
                 model_array[i, :] = model_vals_A
-            np.savetxt(location+filename_bulk+'order_'+str(j)+'velocities_A.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
-            np.savetxt(location + filename_bulk +'order_'+str(j) + 'bfvals_A.txt', bf_array, fmt='%.6f',
+            np.savetxt(location+filename_bulk+'_order_'+str(j)+'_velocities_A.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+            np.savetxt(location + filename_bulk +'_order_'+str(j) + '_bfvals_A.txt', bf_array, fmt='%.6f',
                        header='spec 1 \t spec 2 \t ...')
-            np.savetxt(location + filename_bulk +'order_'+str(j) + 'bfsmooth_A.txt', bf_smooth_array, fmt='%.6f',
+            np.savetxt(location + filename_bulk +'_order_'+str(j) + '_bfsmooth_A.txt', bf_smooth_array, fmt='%.6f',
                        header='spec 1 \t spec 2 \t ...')
-            np.savetxt(location + filename_bulk +'order_'+str(j) + 'models_A.txt', model_array, fmt='%.6f',
+            np.savetxt(location + filename_bulk +'_order_'+str(j) + '_models_A.txt', model_array, fmt='%.6f',
                        header='spec 1 \t spec 2 \t ...')
     else:
         vel_array = np.empty((bf_fitres_A.size, bf_fitres_A[0][1].size))
@@ -988,11 +1000,11 @@ def save_separation_data(
             bf_array[i, :] = bf_vals_A
             bf_smooth_array[i, :] = bf_smooth_vals_A
             model_array[i, :] = model_vals_A
-        np.savetxt(location + filename_bulk + 'velocities_A.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
-        np.savetxt(location + filename_bulk + 'bfvals_A.txt', bf_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
-        np.savetxt(location + filename_bulk + 'bfsmooth_A.txt', bf_smooth_array, fmt='%.6f',
+        np.savetxt(location + filename_bulk + '_velocities_A.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+        np.savetxt(location + filename_bulk + '_bfvals_A.txt', bf_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+        np.savetxt(location + filename_bulk + '_bfsmooth_A.txt', bf_smooth_array, fmt='%.6f',
                header='spec 1 \t spec 2 \t ...')
-        np.savetxt(location + filename_bulk + 'models_A.txt', model_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+        np.savetxt(location + filename_bulk + '_models_A.txt', model_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
 
     if bf_fitres_B.ndim == 2:
         for j in range(0, bf_fitres_B[:, 0].size):
@@ -1006,12 +1018,12 @@ def save_separation_data(
                 bf_array[i, :] = bf_vals_B
                 bf_smooth_array[i, :] = smooth_vals_B
                 model_array[i, :] = model_vals_B
-            np.savetxt(location+filename_bulk+'order_'+str(j)+'velocities_B.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
-            np.savetxt(location + filename_bulk +'order_'+str(j) + 'bfvals_B.txt', bf_array, fmt='%.6f',
+            np.savetxt(location+filename_bulk+'_order_'+str(j)+'_velocities_B.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+            np.savetxt(location + filename_bulk +'_order_'+str(j) + '_bfvals_B.txt', bf_array, fmt='%.6f',
                        header='spec 1 \t spec 2 \t ...')
-            np.savetxt(location + filename_bulk +'order_'+str(j) + 'bfsmooth_B.txt', bf_smooth_array, fmt='%.6f',
+            np.savetxt(location + filename_bulk +'_order_'+str(j) + '_bfsmooth_B.txt', bf_smooth_array, fmt='%.6f',
                        header='spec 1 \t spec 2 \t ...')
-            np.savetxt(location + filename_bulk +'order_'+str(j) + 'models_B.txt', model_array, fmt='%.6f',
+            np.savetxt(location + filename_bulk +'_order_'+str(j) + '_models_B.txt', model_array, fmt='%.6f',
                        header='spec 1 \t spec 2 \t ...')
     else:
         vel_array = np.empty((bf_fitres_B.size, bf_fitres_B[0][1].size))
@@ -1024,11 +1036,11 @@ def save_separation_data(
             bf_array[i, :] = bf_vals_B
             bf_smooth_array[i, :] = bf_smooth_vals_B
             model_array[i, :] = model_vals_B
-        np.savetxt(location + filename_bulk + 'velocities_B.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
-        np.savetxt(location + filename_bulk + 'bfvals_B.txt', bf_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
-        np.savetxt(location + filename_bulk + 'bfsmooth_B.txt', bf_smooth_array, fmt='%.6f',
+        np.savetxt(location + filename_bulk + '_velocities_B.txt', vel_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+        np.savetxt(location + filename_bulk + '_bfvals_B.txt', bf_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+        np.savetxt(location + filename_bulk + '_bfsmooth_B.txt', bf_smooth_array, fmt='%.6f',
                header='spec 1 \t spec 2 \t ...')
-        np.savetxt(location + filename_bulk + 'models_B.txt', model_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
+        np.savetxt(location + filename_bulk + '_models_B.txt', model_array, fmt='%.6f', header='spec 1 \t spec 2 \t ...')
 
 
 def _create_wavelength_intervals(

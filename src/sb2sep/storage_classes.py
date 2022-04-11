@@ -66,7 +66,8 @@ class RadialVelocityOptions:
             iteration_limit=6,
             convergence_limit=5e-3,
             rv_lower_limit=0.0,
-            print_prec=6
+            print_prec=6,
+            n_parallel_jobs=1
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini_A = vsini_guess_A
@@ -122,6 +123,8 @@ class RadialVelocityOptions:
         self.rv_lower_limit = rv_lower_limit
 
         self.print_prec = print_prec
+
+        self.n_parallel_jobs = n_parallel_jobs
 
 
 class SeparateComponentsOptions:
