@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 from astropy.time import Time
 from astropy.coordinates import EarthLocation
@@ -7,34 +9,37 @@ import scipy.constants as scc
 import matplotlib.pyplot as plt
 import matplotlib
 
-from sb2sep import spectrum_processing_functions as spf
-from sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions
-import sb2sep.spectral_separation_routine as ssr
-from sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
-import sb2sep.calculate_radial_velocities as cRV
+from src.sb2sep import spectrum_processing_functions as spf
+from src.sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions, load_configuration_files
+import src.sb2sep.spectral_separation_routine as ssr
+from src.sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
+import src.sb2sep.calculate_radial_velocities as cRV
+import warnings
 
 matplotlib.rcParams.update({'font.size': 25})
 
-# # # # Set variables for script # # # #
-# warnings.filterwarnings("ignore", category=UserWarning)
-plt.ion()
+
+##################### VARIABLES AND OPTIONS FOR SCRIPT ##############################3
+warnings.filterwarnings("ignore", category=UserWarning)
+# plt.ion()
+plt.ioff()
 data_path = 'Data/'
 
 observatory_location = EarthLocation.of_site("lapalma")
 observatory_name = "lapalma"
 stellar_target = "kic8430105"
 wavelength_normalization_limit = (4450, 7000)   # Ångström, limit to data before performing continuum normalization
-wavelength_RV_limit = (4450, 7000)              # Ångström, the actual spectrum area used for analysis
+wavelength_RV_limit = (4450, 7000)              # Ångström, the area used after normalization
 wavelength_buffer_size = 25                     # Ångström, padding included at ends of spectra. Useful when doing
                                                 # wavelength shifts with np.roll()
-wavelength_intervals_full = [(4500, 5825)]
-wavelength_intervals = [(4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250), (6575, 6840)]
-# wavelength_intervals = [(5985, 6250), (6575, 6840)]
-# telluric lines: 5885-5970, 6266-6330, 6465-6525, 6850-7050
-# relevant balmer lines: 6563 (H alpha), 4861 (H beta)
+wavelength_intervals_full = [(4500, 5825)]      # Ångström, the actual interval used.
+wavelength_intervals = [                        # Intervals used for error calculation
+    (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250), (6575, 6840)
+]
+
 
 file_exclude_list = []
-use_for_spectral_separation_A = [
+use_for_spectral_separation_A = [       # converted to index values during file load later (spectral_separation_array_A)
     'FIDi080098_step011_merge.fits', 'FIDi090065_step011_merge.fits',
     'FIBj150080_step011_merge.fits', 'FIDi130112_step011_merge.fits', 'FIBk030043_step011_merge.fits',
     'FIBk050063_step011_merge.fits',
@@ -49,8 +54,8 @@ use_for_spectral_separation_B = [
     'FIBk140069_step011_merge.fits', 'FIDh160100_step011_merge.fits',
     'FIBi230047_step011_merge.fits', 'FIBi240080_step011_merge.fits', "FIEh020092_step012_merge.fits"
     ]
+
 delta_v = 1.0          # interpolation resolution for spectrum in km/s
-speed_of_light = scc.c / 1000       # in km/s
 
 mass_A_estimate = 1.31  # both used to estimate RV_B
 mass_B_estimate = 0.83
@@ -58,21 +63,45 @@ mass_B_estimate = 0.83
 system_RV_estimate = 12.61          # to subtract before routine
 orbital_period_estimate = 63.327     # for ignoring component B during eclipse
 
-# # Stellar parameter estimates (relevant for limb darkening calculation) # #
-Teff_A, Teff_B = 5042, 5621
-logg_A, logg_B = 2.78, 4.58
-MH_A  , MH_B   = -0.49, -0.49
-mTur_A, mTur_B = 2.0, 2.0
-
 # # Initial fit parameters for rotational broadening function fit # #
 bf_velocity_span = 300        # broadening function span in velocity space
-limbd_A = estimate_linear_limbd(wavelength_RV_limit, logg_A, Teff_A, MH_A, mTur_A, loc='Data/tables/atlasco.dat')
-limbd_B = estimate_linear_limbd(wavelength_RV_limit, logg_B, Teff_B, MH_B, mTur_B, loc='Data/tables/atlasco.dat')
+limbd_A = 0.68          # estimate_linear_limbd(wavelength_RV_limit, logg_A, Teff_A, MH_A, mTur_A, loc='Data/tables/atlasco.dat')
+limbd_B = 0.68          # estimate_linear_limbd(wavelength_RV_limit, logg_B, Teff_B, MH_B, mTur_B, loc='Data/tables/atlasco.dat')
 
 # # Template Spectra # #
 template_spectrum_path_A = 'Data/template_spectra/5000_30_m05p00.ms.fits'
 template_spectrum_path_B = 'Data/template_spectra/5500_45_m05p00.ms.fits'
 
+# # Generate rv_options # #
+rv_options = RadialVelocityOptions(
+    vsini_guess_A=4.0, vsini_guess_B=4.0,
+    delta_v=delta_v, spectral_resolution=67000,
+    velocity_fit_width_A=60, velocity_fit_width_B=20,
+    limbd_coef_A=limbd_A, limbd_coef_B=limbd_B,
+    refit_width_A=10.0, refit_width_B=8.0,
+    smooth_sigma_A=2.0, smooth_sigma_B=4.0,
+    bf_velocity_span=bf_velocity_span,
+    ignore_at_phase_B=(0.98, 0.02),
+    iteration_limit=6, convergence_limit=5e-3
+)
+# # Generate component spectrum calculation options
+sep_comp_options = SeparateComponentsOptions(
+    delta_v=delta_v, convergence_limit=1e-2, max_iterations=10,
+    use_for_spectral_separation_A=None,     # re-defined after loading all the observed spectra below
+    use_for_spectral_separation_B=None      # same
+)
+# # Generate spectral separation routine options
+routine_options = RoutineOptions(
+    convergence_limit=1E-5, iteration_limit=2,
+    plot=True, return_unbuffered=True, save_path='results/', save_all_results=True
+)
+# # Alternative generation of options objects above through configuration files:
+routine_options, sep_comp_options, rv_options = load_configuration_files(
+    'routine_config.txt', 'sep_config.txt', 'rv_config.txt'
+)
+
+
+##################### PREPARATION BEFORE SEPARATION ROUTINE CALLS #############################
 # # Prepare collection lists and arrays # #
 flux_collection_list = []
 wavelength_collection_list = []
@@ -81,6 +110,7 @@ RA_array = np.array([])
 DEC_array = np.array([])
 spectral_separation_array_A = np.array([])
 spectral_separation_array_B = np.array([])
+
 
 # # # Load fits files, collect and normalize data # # #
 i = 0
@@ -116,9 +146,9 @@ for filename in os.listdir(data_path):
         wavelength_collection_list.append(wavelength)
         flux_collection_list.append(flux)
         i += 1
-# print(spectral_separation_array_A)
-# print(spectral_separation_array_B)
 
+sep_comp_options.use_for_spectral_separation_A = spectral_separation_array_A        # see notes earlier
+sep_comp_options.use_for_spectral_separation_B = spectral_separation_array_B
 
 # # Verify RA and DEC # #
 RA, DEC = RA_array[0], DEC_array[0]
@@ -127,8 +157,9 @@ RA, DEC = RA_array[0], DEC_array[0]
 times = Time(date_array, scale='utc', location=observatory_location)
 times.format = 'jd'
 times.out_subfmt = 'long'
-bc_rv_cor, _, _ = get_BC_vel(times, ra=RA, dec=DEC, starname=stellar_target, ephemeris='de432s',
-                                   obsname=observatory_name)
+bc_rv_cor, _, _ = get_BC_vel(
+    times, ra=RA, dec=DEC, starname=stellar_target, ephemeris='de432s', obsname=observatory_name
+)
 bc_rv_cor = bc_rv_cor/1000      # from m/s to km/s
 
 # # # Calculate JDUTC to BJDTDB correction # # #
@@ -173,33 +204,6 @@ wavelength, flux_unbuffered_list, wavelength_buffered, flux_buffered_list, buffe
 [flux_collection_inverted_buffered, flux_template_A_inverted_buffered, flux_template_B_inverted_buffered] = \
     flux_buffered_list
 
-
-# # Generate rv_options # #
-rv_options = RadialVelocityOptions(
-    vsini_guess_A=4.0, vsini_guess_B=4.0,
-    delta_v=delta_v, spectral_resolution=67000,
-    velocity_fit_width_A=60, velocity_fit_width_B=20,
-    limbd_coef_A=limbd_A, limbd_coef_B=limbd_B,
-    refit_width_A=10.0, refit_width_B=8.0,
-    smooth_sigma_A=2.0, smooth_sigma_B=4.0,
-    bf_velocity_span=bf_velocity_span,
-    period=orbital_period_estimate, time_values=bjdtdb-(2400000+54976.6348), ignore_at_phase_B=(0.98, 0.02),
-    iteration_limit=6, convergence_limit=5e-3
-)
-
-# # Generate component spectrum calculation options
-sep_comp_options = SeparateComponentsOptions(
-    delta_v=delta_v, convergence_limit=1e-2, max_iterations=10,
-    use_for_spectral_separation_A=spectral_separation_array_A,
-    use_for_spectral_separation_B=spectral_separation_array_B
-)
-
-# # Generate spectral separation routine options
-routine_options = RoutineOptions(
-    time_values=bjdtdb-(2400000+54976.6348), convergence_limit=1E-5, iteration_limit=2,
-    plot=True, return_unbuffered=True, save_path='results/', save_all_results=True
-)
-
 # # Calculate broadening function RVs to use as initial guesses # #
 RV_guesses_A, _ = cRV.radial_velocities_of_multiple_spectra(
     flux_collection_inverted, flux_template_A_inverted, rv_options, number_of_parallel_jobs=4,
@@ -211,30 +215,26 @@ RV_guesses_B = -RV_guesses_A * (mass_A_estimate / mass_B_estimate)
 
 RV_guess_collection[:, 1] = RV_guesses_B
 
-# # #  Separate component spectra and calculate RVs iteratively # # #
+
+########################### SEPARATION ROUTINE CALLS #################################
+# # #  Separate component spectra and calculate RVs iteratively for large interval # # #
 interval_results = ssr.spectral_separation_routine_multiple_intervals(
     wavelength_buffered, wavelength_intervals_full, flux_collection_inverted_buffered,
     flux_template_A_inverted_buffered,
     flux_template_B_inverted_buffered,
     RV_guess_collection,
     routine_options, sep_comp_options, rv_options,
-    wavelength_buffer_size
+    wavelength_buffer_size, time_values=bjdtdb-(2400000+54976.6348), period=orbital_period_estimate
 )
 
 # # # Calculate error # # #
-_, RV_A = np.loadtxt('results/4500_5825_rvA.txt', unpack=True)       # saved by the previous call
-_, RV_B, _ = np.loadtxt('results/4500_5825_rvB.txt', unpack=True)
-
-# # Separate component spectra and calculate RVs for each interval # #
-RV_guess_collection[:, 0] = RV_A
-RV_guess_collection[:, 1] = RV_B
 interval_results = ssr.spectral_separation_routine_multiple_intervals(
      wavelength_buffered, wavelength_intervals, flux_collection_inverted_buffered,
      flux_template_A_inverted_buffered,
      flux_template_B_inverted_buffered,
      RV_guess_collection,
      routine_options, sep_comp_options, rv_options,
-     wavelength_buffer_size
+     wavelength_buffer_size, time_values=bjdtdb-(2400000+54976.6348), period=orbital_period_estimate
 )
 
-# output is saved to results/
+# output is saved to Results/.

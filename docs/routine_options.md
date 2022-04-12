@@ -6,20 +6,30 @@ These are:
 - a `SeparateComponentsOptions` object for the component separation subroutine.
 - a `RadialVelocityOptions` object for the radial velocity subroutine.
 
-Below, each parameter in the objects will be described. Some parameters are accessible from multiple objects, making it possible to give different values for each. This is discouraged.
+
+While these objects can be initialized directly in your python script by supplying the inputs shown below,
+they can also be initialized through configuration files with the function 
+**storage_classes.load_configuration_files()**. It requires input arguments:
+- **loc_routine_file**: string, path of configuration file for RoutineOptions object.
+- **loc_separation_file**: string, path of configuration file for SeparateComponentsOptions object.
+- **loc_rv_file**: string, path of configuration file for RadialVelocityOptions object.
+
+The [example script](https://github.com/jsinkbaek/sb2sep/blob/main/test/kic8430105/RV_from_spectra_kic8430105.py) with
+KIC8430105 shows how to initialize these objects using both configuration files and directly in the script.
+
+Below, ALL parameters in the objects are described. Some parameters are accessible from multiple objects, making it possible to give different values for each. This is discouraged.
 Many of the parameters can be kept at their default values without loss of quality in the output.
 
+
 ### RoutineOptions: ###
-- **time_values** (numpy array shape (n_spectra, )), Default = None. Holds the timestamps of all spectra. Primarily used to feed to output files.
 - **convergence_limit** (float), Default = 1E-5. Convergence criteria for the radial velocity RMS needed to exit the parent routine.
 - **iteration_limit** (int), Default = 10. Maximum allowed iterations of the parent routine before automatic exit.
 - **plot** (bool), Default = True. If True, diagnostic plots are shown and updated between iterations.
 - **verbose** (bool), Default = True. Indicates if parent routine should print extra updates during iteration.
 - **return_unbuffered** (bool), Default = True. If received spectra are padded around the edges and the `buffer_mask` parameter is supplied, setting this to True will remove said padding before returning separated spectra of both components.
 - **save_plot_path** (string), Default = None. If not None, the final diagnostic plots will be saved as a multipage PDF file in the specified folder.
-- **save_all_results** (bool), Default = True. If True, raw data is saved to disk before returning from the function. This data can be plotted conveniently with the `evaluate_ssr_results` module to evaluate its quality.
+- **save_all_results** (bool), Default = True. If True, raw data is saved to disk before returning from the function.
 - **save_path** (string), Default = '/.'. Defines the folder that raw data is saved to when `save_all_results` is set to True.
-- **buffer_mask** (numpy array shape (:, )), Default = None. If data is padded with a buffer around the edges, this mask should be supplied. It should give the unbuffered data when flipped, e.g. `flux_buffered[~buffer_mask] = flux`. This parameter can be left at `None` when using `spectral_separation_routine_multiple_intervals`, as long as `wavelength_buffer_size` is supplied directly to that function, since the routine will manually set it.
 - **filename_bulk** (string), Default = None. If **save_all_results** is True, output filenames will be prepended with this string. If None, they will be prepended with the wavelength interval used (for example '4500_5825').
 
 ### SeparateComponentsOptions: ###
@@ -73,7 +83,7 @@ If the **use_for_spectral_separation_X** parameter is not supplied for a compone
 - **ignore_at_phase_B** (tuple(float, float)), Default = None. Same as previous, but opposite.
 - **verbose** (bool), Default = False. If True, extra prints are done.
 - **iteration_limit** (int), Default = 6. Maximum allowed iterations per spectrum for RV caculation subroutine. Amount is effectively doubled if `refit_width_X` is provided.
-- **convergence_limit** (float), Default = 5E-3. Convergence criterium for RV RMS.
+- **convergence_limit** (float), Default = 5E-3. Convergence criterium for RV in absolute units.
 - **rv_lower_limit** (float), Default = 0.0. Used only for plotting the limits in broadening function plots if `RoutineOptions.plot = True`.
 
 

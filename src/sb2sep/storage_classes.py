@@ -1,3 +1,146 @@
+import numpy as np
+
+
+def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file):
+    # Load routine config
+    col0, col1 = np.genfromtxt(loc_routine_file, dtype=str, usecols=(0, 1), unpack=True)
+    routine_options = RoutineOptions()
+    for index, value in enumerate(col0):
+        if value == 'convergence_limit':
+            routine_options.convergence_limit = float(col1[index])
+        elif value == 'iteration_limit':
+            routine_options.iteration_limit = int(col1[index])
+        elif value == 'plot':
+            routine_options.plot = bool(col1[index])
+        elif value == 'verbose':
+            routine_options.verbose = bool(col1[index])
+        elif value == 'save_plot_path':
+            if col1[index] == 'None':
+                routine_options.save_plot_path = None
+            else:
+                routine_options.save_plot_path = col1[index]
+        elif value == 'save_all_results':
+            routine_options.save_all_results = bool(col1[index])
+        elif value == 'save_path':
+            routine_options.save_path = col1[index]
+        elif value == 'return_unbuffered':
+            routine_options.return_unbuffered = bool(col1[index])
+        else:
+            raise KeyError(f'Routine options config file key {value} not supported.')
+
+    # Load separated spectra subroutine config file
+    col0, col1 = np.loadtxt(loc_separation_file, dtype=str, usecols=(0, 1), unpack=True)
+    sep_options = SeparateComponentsOptions()
+    for index, value in enumerate(col0):
+        if value == 'delta_v':
+            sep_options.delta_v = float(col1[index])
+        elif value == 'convergence_limit':
+            sep_options.convergence_limit = float(col1[index])
+        elif value == 'max_iterations':
+            sep_options.max_iterations = int(col1[index])
+        elif value == 'rv_proximity_limit':
+            sep_options.rv_proximity_limit = float(col1[index])
+        elif value == 'rv_lower_limit':
+            sep_options.rv_lower_limit = float(col1[index])
+        elif value == 'use_for_spectral_separation_A':
+            if col1[index] == 'None':
+                sep_options.use_for_spectral_separation_A = None
+            else:
+                eval_list = eval(col1[index])
+                sep_options.use_for_spectral_separation_A = np.array(eval_list)
+        elif value == 'use_for_spectral_separation_B':
+            if col1[index] == 'None':
+                sep_options.use_for_spectral_separation_B = None
+            else:
+                eval_list = eval(col1[index])
+                sep_options.use_for_spectral_separation_B = np.array(eval_list)
+        elif value == 'weights':
+            if col1[index] == 'None':
+                sep_options.weights = None
+            else:
+                eval_list = eval(col1[index])
+                sep_options.weights = np.array(eval_list)
+        elif value == 'verbose':
+            sep_options.verbose = bool(col1[index])
+        else:
+            raise KeyError(f'Separation options config file key {value} not supported.')
+
+    # Load RV subroutine config
+    col0, col1 = np.loadtxt(loc_rv_file, dtype=str, usecols=(0, 1), unpack=True)
+    rv_options = RadialVelocityOptions()
+    for index, value in enumerate(col0):
+        if value == 'vsini_guess_A':
+            rv_options.vsini_A = float(col1[index])
+        elif value == 'vsini_guess_B':
+            rv_options.vsini_B = float(col1[index])
+        elif value == 'vary_vsini_A':
+            rv_options.vary_vsini_A = bool(col1[index])
+        elif value == 'vary_vsini_B':
+            rv_options.vary_vsini_B = bool(col1[index])
+        elif value == 'vsini_vary_limit_A':
+            if col1[index] == 'None':
+                rv_options.vsini_vary_limit_A = None
+            else:
+                rv_options.vsini_vary_limit_A = float(col1[index])
+        elif value == 'vsini_vary_limit_B':
+            if col1[index] == 'None':
+                rv_options.vsini_vary_limit_B = None
+            else:
+                rv_options.vsini_vary_limit_B = float(col1[index])
+        elif value == 'delta_v':
+            rv_options.delta_v = float(col1[index])
+        elif value == 'spectral_resolution':
+            rv_options.spectral_resolution = float(col1[index])
+        elif value == 'smooth_sigma_A':
+            rv_options.bf_smooth_sigma_A = float(col1[index])
+        elif value == 'smooth_sigma_B':
+            rv_options.bf_smooth_sigma_B = float(col1[index])
+        elif value == 'bf_velocity_span':
+            rv_options.bf_velocity_span = float(col1[index])
+        elif value == 'velocity_fit_width_A':
+            rv_options.velocity_fit_width_A = float(col1[index])
+        elif value == 'velocity_fit_width_B':
+            rv_options.velocity_fit_width_B = float(col1[index])
+        elif value == 'refit_width_A':
+            if col1[index] == 'None':
+                rv_options.refit_width_A = None
+            else:
+                rv_options.refit_width_A = float(col1[index])
+        elif value == 'refit_width_B':
+            if col1[index] == 'None':
+                rv_options.refit_width_B = None
+            else:
+                rv_options.refit_width_B = float(col1[index])
+        elif value == 'limbd_coef_A':
+            rv_options.limbd_coef_A = float(col1[index])
+        elif value == 'limbd_coef_B':
+            rv_options.limbd_coef_B = float(col1[index])
+        elif value == 'vary_limbd_coef_A':
+            rv_options.vary_limbd_coef_A = bool(col1[index])
+        elif value == 'vary_limbd_coef_B':
+            rv_options.vary_limbd_coef_B = bool(col1[index])
+        elif value == 'ignore_at_phase_A':
+            if col1[index] == 'None':
+                rv_options.ignore_at_phase_A = None
+            else:
+                rv_options.ignore_at_phase_A = eval(col1[index])
+        elif value == 'ignore_at_phase_B':
+            if col1[index] == 'None':
+                rv_options.ignore_at_phase_B = None
+            else:
+                rv_options.ignore_at_phase_B = eval(col1[index])
+        elif value == 'verbose':
+            rv_options.verbose = bool(col1[index])
+        elif value == 'convergence_limit':
+            rv_options.convergence_limit = float(col1[index])
+        elif value == 'iteration_limit':
+            rv_options.iteration_limit = int(col1[index])
+        elif value == 'rv_lower_limit':
+            rv_options.rv_lower_limit = float(col1[index])
+        else:
+            raise KeyError(f'RV options config file key {value} not supported.')
+    return routine_options, sep_options, rv_options
+
 
 class InitialFitParameters:
     def __init__(
@@ -152,7 +295,6 @@ class SeparateComponentsOptions:
 class RoutineOptions:
     def __init__(
             self,
-            time_values=None,
             convergence_limit=1E-5,
             iteration_limit=10,
             plot=True,
@@ -161,10 +303,8 @@ class RoutineOptions:
             save_plot_path=None,
             save_all_results=True,
             save_path='./',
-            buffer_mask=None,
             filename_bulk=None
     ):
-        self.time_values = time_values
         self.convergence_limit = convergence_limit
         self.iteration_limit = iteration_limit
         self.plot = plot
@@ -173,5 +313,4 @@ class RoutineOptions:
         self.save_plot_path = save_plot_path
         self.save_all_results = save_all_results
         self.save_path = save_path
-        self.buffer_mask = buffer_mask
         self.filename_bulk = filename_bulk

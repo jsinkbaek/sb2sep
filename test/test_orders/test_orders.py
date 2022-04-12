@@ -1,9 +1,11 @@
+import matplotlib
 import numpy as np
 from src.sb2sep import spectral_separation_routine as ssr
 from src.sb2sep import spectrum_processing_functions as spf
 from src.sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions
 import matplotlib.pyplot as plt
 import time
+import sys
 
 sep_spectra = np.loadtxt('../kic8430105/results/sep_flux_renormalized.txt')
 wl = sep_spectra[:, 0]
@@ -35,33 +37,24 @@ rv_options = RadialVelocityOptions(
     vsini_guess_A=4.0, vsini_guess_B=4.0, delta_v=1.0, spectral_resolution=67000, velocity_fit_width_A=10.0,
     velocity_fit_width_B=10.0, limbd_coef_A=0.68, limbd_coef_B=0.68,
     smooth_sigma_B=2.0, smooth_sigma_A=2.0, bf_velocity_span=200, iteration_limit=10, convergence_limit=1e-2,
-    verbose=False, time_values=np.linspace(0, 1, 10), period=1., n_parallel_jobs=4
+    verbose=True, n_parallel_jobs=4
 )
 sep_comp_options = SeparateComponentsOptions(
     delta_v=1.0, convergence_limit=1e-2, max_iterations=10, rv_proximity_limit=5.0, verbose=False, weights=[2.0]*10
 )
 routine_options = RoutineOptions(
-    convergence_limit=1e-5, iteration_limit=1, plot=True, save_all_results=False, time_values=np.linspace(0, 1, 10),
-    save_path='./', filename_bulk='test', verbose=False
+    convergence_limit=1e-5, iteration_limit=2, plot=True, save_all_results=False,
+    save_path='./', filename_bulk='test', verbose=True
 )
 
 RV_guess = np.empty((10, 2))
 RV_guess[:, 0] = np.linspace(30, -30, 10)+(0.2*np.random.rand(10)-0.2*0.5)
 RV_guess[:, 1] = np.linspace(-30, 30, 10)+(0.2*np.random.rand(10)-0.2*0.5)
 
-# mask_orders = flux_collection == 1.0
-# mask_orders = ~mask_orders
-# for i in range(0, 4):
-#     plt.plot(wl, flux_collection[:, i, 0])
-# plt.show()
+
 start_time_1 = time.time()
 results = ssr.spectral_separation_routine(
-    flux_collection, template, template, wl, routine_options, sep_comp_options, rv_options, RV_guess, mask_orders
+    flux_collection, template, template, wl, routine_options, sep_comp_options, rv_options, RV_guess, mask_orders,
+    time_values=np.linspace(0, 0.99, 10), period=1.
 )
 print('--- %s seconds' % (time.time() - start_time_1))
-rv_options.n_parallel_jobs = 1
-start_time_2 = time.time()
-results = ssr.spectral_separation_routine(
-    flux_collection, template, template, wl, routine_options, sep_comp_options, rv_options, RV_guess, mask_orders
-)
-print('--- %s seconds' % (time.time() - start_time_2))

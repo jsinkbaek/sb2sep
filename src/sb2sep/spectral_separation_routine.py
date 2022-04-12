@@ -852,7 +852,8 @@ def _plot_ssr_iteration(
     f1_ax3.set_xlabel('Wavelength [Å]')
 
     plt.draw_all()
-    plt.pause(3)
+    plt.show(block=False)
+    plt.pause(0.1)
 
 
 def save_multi_image(filename):
@@ -872,7 +873,7 @@ def spectral_separation_routine(
         wavelength: np.ndarray,
         options: RoutineOptions, sep_comp_options: SeparateComponentsOptions, rv_options: RadialVelocityOptions,
         RV_guess_collection: np.ndarray, mask_collection_orders=None, time_values: np.ndarray = None,
-        period: float = None
+        period: float = None, buffer_mask: np.ndarray = None
 ):
     """
     Routine that separates component spectra and calculates radial velocities by iteratively calling
@@ -912,6 +913,9 @@ def spectral_separation_routine(
     :param sep_comp_options:      Options to pass on to the subroutine separate_component_spectra.
     :param rv_options:            Options to pass on to the subroutine recalculate_RVs.
     :param RV_guess_collection:   np.ndarray shape (n_spectra, 2). Initial RV guesses for each component (A: [:, 0]).
+    :param buffer_mask: np.ndarray shape (:, ), Default = None. If data is padded with a buffer around the edges,
+                        this mask should be supplied. It should give the unbuffered data when flipped, e.g.
+                        `flux_buffered[~buffer_mask] = flux`.
 
     :return:    RV_collection_A,  RV_collection_B, separated_flux_A, separated_flux_B, wavelength
                 RV_collection_A:  np.ndarray shape (n_spectra, ). RV values of component A for each program spectrum.
@@ -923,8 +927,8 @@ def spectral_separation_routine(
 
             Note on :*
                 if buffer_mask is provided, the returned spectra will be the un-buffered versions, meaning
-                separated_flux_A.size = inv_flux_templateA[buffer_mask].size. Same for the returned wavelength.
-                This can be disabled by setting return_unbuffered=False.
+                separated_flux_A.size = flux_templateA[buffer_mask].size. Same for the returned wavelength.
+                This can be disabled by setting return_unbuffered=False in the options object.
     """
 
     if RV_guess_collection.ndim == 2:
@@ -938,7 +942,6 @@ def spectral_separation_routine(
     convergence_limit = options.convergence_limit
     iteration_limit = options.iteration_limit
 
-    buffer_mask = options.buffer_mask
     if buffer_mask is None:
         buffer_mask = np.zeros(wavelength.shape, dtype=bool)
 
@@ -1302,12 +1305,10 @@ def spectral_separation_routine_multiple_intervals(
         templateB_ = templB_interval_coll[i]
         buffer_mask_ = interval_buffer_mask[i]
 
-        options.buffer_mask = buffer_mask_
-
         RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp, RVb_flags = spectral_separation_routine(
             flux_collection_, templateA_, templateB_,
             wavelength_, options, sep_comp_options, rv_options, RV_guess_collection, time_values=time_values,
-            period=period
+            period=period, buffer_mask=buffer_mask_
         )
         results.append([RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp, RVb_flags])
     return results
