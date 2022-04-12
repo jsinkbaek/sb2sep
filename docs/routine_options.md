@@ -15,7 +15,7 @@ they can also be initialized through configuration files with the function
 - **loc_rv_file**: string, path of configuration file for RadialVelocityOptions object.
 
 The [example script](https://github.com/jsinkbaek/sb2sep/blob/main/test/kic8430105/RV_from_spectra_kic8430105.py) with
-KIC8430105 shows how to initialize these objects using both configuration files and directly in the script.
+KIC8430105 shows how to initialize these objects either by using configuration files or directly in the script.
 
 Below, ALL parameters in the objects are described. Some parameters are accessible from multiple objects, making it possible to give different values for each. This is discouraged.
 Many of the parameters can be kept at their default values without loss of quality in the output.
