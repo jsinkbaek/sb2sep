@@ -58,8 +58,6 @@ class RadialVelocityOptions:
             smooth_sigma_A=4.0,
             smooth_sigma_B=4.0,
             bf_velocity_span=200,
-            period=None,
-            time_values=None,
             ignore_at_phase_A=None,
             ignore_at_phase_B=None,
             verbose=False,
@@ -111,8 +109,6 @@ class RadialVelocityOptions:
         # Use if component should not be subtracted in a specific phase-area (fx. (0.7, 0.9)), if it is totally eclipsed
         self.ignore_at_phase_A = ignore_at_phase_A
         self.ignore_at_phase_B = ignore_at_phase_B
-        self.period = period
-        self.time_values = time_values
 
         # Can be 'False', 'True' (or 'all') or 'errors'
         self.verbose=verbose

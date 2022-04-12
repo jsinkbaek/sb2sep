@@ -38,11 +38,11 @@ rv_options = RadialVelocityOptions(
     verbose=False, time_values=np.linspace(0, 1, 10), period=1., n_parallel_jobs=4
 )
 sep_comp_options = SeparateComponentsOptions(
-    delta_v=1.0, convergence_limit=1e-2, max_iterations=10, rv_proximity_limit=5.0, verbose=False
+    delta_v=1.0, convergence_limit=1e-2, max_iterations=10, rv_proximity_limit=5.0, verbose=False, weights=[2.0]*10
 )
 routine_options = RoutineOptions(
-    convergence_limit=1e-5, iteration_limit=1, plot=False, save_all_results=False, time_values=np.linspace(0, 1, 10),
-    save_path='./', filename_bulk='test_', verbose=False
+    convergence_limit=1e-5, iteration_limit=1, plot=True, save_all_results=False, time_values=np.linspace(0, 1, 10),
+    save_path='./', filename_bulk='test', verbose=False
 )
 
 RV_guess = np.empty((10, 2))
