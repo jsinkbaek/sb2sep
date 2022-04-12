@@ -12,7 +12,7 @@ import numpy as np
 from scipy.signal import fftconvolve
 import lmfit
 import scipy.constants as scc
-from src.sb2sep.storage_classes import InitialFitParameters
+from sb2sep.storage_classes import InitialFitParameters
 
 
 def rotational_broadening_function_profile(

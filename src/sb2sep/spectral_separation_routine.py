@@ -13,17 +13,17 @@ same author. Both follows the formula layout of the article:
 """
 import matplotlib.pyplot as plt
 
-from src.sb2sep.calculate_radial_velocities import radial_velocity_single_component
-from src.sb2sep.broadening_function_svd import *
-from src.sb2sep.storage_classes import InitialFitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
+from sb2sep.calculate_radial_velocities import radial_velocity_single_component
+from sb2sep.broadening_function_svd import *
+from sb2sep.storage_classes import InitialFitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
     RoutineOptions
-from src.sb2sep.rotational_broadening_function_fitting import get_fit_parameter_values
-import src.sb2sep.spectrum_processing_functions as spf
+from sb2sep.rotational_broadening_function_fitting import get_fit_parameter_values
+import sb2sep.spectrum_processing_functions as spf
 import numpy as np
 from copy import deepcopy
 from joblib import Parallel, delayed
 import matplotlib
-import src.sb2sep.broadening_function_svd as bfsvd
+import sb2sep.broadening_function_svd as bfsvd
 # from scipy.interpolate import interp1d
 import scipy.constants as scc
 from matplotlib.backends.backend_pdf import PdfPages

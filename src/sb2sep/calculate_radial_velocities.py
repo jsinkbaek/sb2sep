@@ -1,8 +1,8 @@
-from src.sb2sep.broadening_function_svd import *
-from src.sb2sep.rotational_broadening_function_fitting import get_fit_parameter_values
+from sb2sep.broadening_function_svd import *
+from sb2sep.rotational_broadening_function_fitting import get_fit_parameter_values
 from copy import copy
 from joblib import Parallel, delayed
-from src.sb2sep.storage_classes import InitialFitParameters, RadialVelocityOptions
+from sb2sep.storage_classes import InitialFitParameters, RadialVelocityOptions
 import numpy as np
 
 

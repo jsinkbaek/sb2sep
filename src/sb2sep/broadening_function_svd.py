@@ -12,8 +12,8 @@ Some of the import statements lacking below are imported from rotational_broaden
 
 import scipy.linalg as lg
 import warnings
-from src.sb2sep.rotational_broadening_function_fitting import *
-from src.sb2sep.storage_classes import InitialFitParameters
+from sb2sep.rotational_broadening_function_fitting import *
+from sb2sep.storage_classes import InitialFitParameters
 import matplotlib.pyplot as plt
 from copy import copy
 
