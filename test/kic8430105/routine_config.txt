@@ -1,0 +1,27 @@
+# # Config file for parent spectral separation routine # #
+# Comment lines beginning with the #-symbol will be treated as empty.
+# Each non-empty line must include a parameter name followed by its value.
+# Trailing comments are allowed after this.
+
+convergence_limit 1E-5		# Convergence criteria for RMS of radial velocities needed to exit 
+				# routine.
+
+iteration_limit 2		# Maximum allowed iterations of parent routine before automatic exit.
+
+plot True			# If True, diagnostic plots are shown and updated between iterations.
+
+verbose True			# Indicates if parent routine should print extra updates to console.
+
+save_plot_path None		# If string and not None, final diagnostic plots are saved as a multi-
+				# page PDF file in the specified folder.
+
+save_all_results True		# If True, raw output data is saved to disk before returning from the
+				# function. 
+
+save_path results/		# Defines the folder that raw data is saved to when save_all_results
+				# is True.
+
+return_unbuffered True		# If True, any padding of spectra introduced and handled with the
+				# buffer_mask parameter will be removed before returning results from
+				# the routine. If no buffer_mask is supplied, this option does
+				# nothing.

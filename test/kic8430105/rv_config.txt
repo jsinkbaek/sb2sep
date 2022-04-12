@@ -1,0 +1,51 @@
+# # Config file for Radial Velocity calculation subroutine # #
+# Comments must begin with the #-symbol.
+# Each non-empty line must include a parameter name followed by its value.
+# Trailing comments are allowed after this.
+
+vsini_guess_A 4.0       # initial guess for rotational broadening function fit. Generally okay to leave as is.
+vsini_guess_B 4.0
+vary_vsini_A True	# Indicates if vsini should be fitted for. Usually best to set ensure correct shape of broadening function fit.
+vary_vsini_B True
+vsini_vary_limit_A None	# Limit on how must vsini can be changed during iteration. If not set, routine will set this to 0.7 for stability.
+vsini_vary_limit_B None # they are normally okay to leave as is.
+
+delta_v 1.0             # MUST BE SET TO THE SAME VALUE AS USED TO INTERPOLATE SPECTRA
+spectral_resolution 67000   # should be set to the spectral resolution of the spectrograph. Does not 
+			    # have to be exact if vsini is fitted for and not of interest.
+smooth_sigma_A 2.0	# Gaussian smoothing parameters in km/s to use on broadening functions before
+smooth_sigma_B 4.0	# fitting. Inspect non-smoothed broadening functions first, 4.0 are likely
+			# too high. With a dim component B, a higher smoothing value than for A will
+			# make it possible to smooth out some of the noise from A.
+bf_velocity_span 300	# Width of the broadening function in velocity space (km/s). Fudge parameter
+			# that does not have a clear correct value. Must not be too small, and not too
+			# large. Can probably be left as is, but it it recommended to experiment with
+			# it.
+
+velocity_fit_width_A 60 # How far away to include data during fitting of component A RV (km/s).
+			# fitting routine also masks data by (velocity-rv)/vsini separately.
+velocity_fit_width_B 20 # these are primarily to limit allowed search regions.
+refit_width_A None	# If set, RV procedure is repeated with smaller velocity_fit_width_A after.
+refit_width_B None	# These slows computation, but might improve final precision on found RVs.
+
+limbd_coef_A 0.68	# Linear limb darkening coefficients. Unless vsini is of physical interest, 
+limbd_coef_B 0.68       # these can be left as is.
+vary_limbd_coef_A False	# If True, rotational broadening function fitting will fit for limb darkening.
+vary_limbd_coef_B False
+
+ignore_at_phase_A None	# (float,float). If supplied, separated component A spectrum will not
+			# be subtracted from spectra for RV_B calculation if they are within specific
+			# phase interval. Interval can wrap around e.g. (0.98, 0.02). Make sure that 
+			# the time_values and period parameters are supplied to the routine, and that
+			# np.mod(time_values, period)/period correspond to the phase given.
+			# Do not use whitespace between the values in the parentheses.
+ignore_at_phase_B (0.98,0.02)	# Same as above, but for component B.
+
+verbose True		# If True, extra prints are done during this subroutine.
+
+convergence_limit 5E-3	# Convergence criterium for RV in absolute units (km/s). If 1E-1, routine will
+			# consider an RV deviation of less than 0.1 km/s as succesfully converged.
+iteration_limit 6	# Maximum allowed iterations per spectrum before breaking RV calculation loop.
+
+rv_lower_limit 0.0	# Only relevant to change from 0.0 if you want plotted lines in the broadening
+			# function plots of this limit.

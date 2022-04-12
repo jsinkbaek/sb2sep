@@ -21,7 +21,7 @@ class IntervalResult:
     def __init__(
             self, time_values_A, time_values_B,
             wavelength, separated_spectrum_A, separated_spectrum_B, template_spectrum_A, template_spectrum_B,
-            RV_A, RV_B, RV_B_flags, RV_A_initial, RV_B_initial,
+            RV_A, RV_B, RV_A_initial, RV_B_initial,
             bf_velocity_A, bf_vals_A, bf_smooth_A, bf_model_vals_A,
             bf_velocity_B, bf_vals_B, bf_smooth_B, bf_model_vals_B,
             wavelength_a=None, wavelength_b=None
@@ -35,7 +35,6 @@ class IntervalResult:
         self.template_flux_B = template_spectrum_B
         self.RV_A = RV_A
         self.RV_B = RV_B
-        self.RV_B_flags = RV_B_flags
         self.RV_A_initial = RV_A_initial
         self.RV_B_initial = RV_B_initial
         self.bf_velocity_A = bf_velocity_A
@@ -158,12 +157,12 @@ def load_routine_results(folder_path: str, filename_bulk_list: list):
         wavelength, separated_flux_A, separated_flux_B = sep_array[:, 0], sep_array[:, 1], sep_array[:, 2]
         template_flux_A, template_flux_B = sep_array[:, 3], sep_array[:, 4]
         time_values_A, RV_A = rvA_array[:, 0], rvA_array[:, 1]
-        time_values_B, RV_B, RV_B_flags = rvB_array[:, 0], rvB_array[:, 1], rvB_array[:, 2]
+        time_values_B, RV_B = rvB_array[:, 0], rvB_array[:, 1]
         RV_A_initial, RV_B_initial = rvs_initial[:, 0], rvs_initial[:, 1]
 
         interval_result = IntervalResult(
             time_values_A, time_values_B, wavelength, separated_flux_A, separated_flux_B, template_flux_A,
-            template_flux_B, RV_A, RV_B, RV_B_flags, RV_A_initial, RV_B_initial, velA_array, bfA_array,
+            template_flux_B, RV_A, RV_B, RV_A_initial, RV_B_initial, velA_array, bfA_array,
             bfA_smooth_array, modelA_array, velB_array, bfB_array, bfB_smooth_array, modelB_array
         )
         routine_results.append_interval(interval_result)
@@ -195,11 +194,8 @@ def plot_rv_and_separated_spectra(
         phase_B = np.mod(evaluation_data.time_values_B[i], period) / period
         print(evaluation_data.time_values_A[i])
 
-        flag_mask = evaluation_data.RV_B_flags[i].astype(bool)
-
         ax1.plot(phase_A, evaluation_data.RV_A[i], color_A+'*')
-        ax1.plot(phase_B[flag_mask], evaluation_data.RV_B[i][flag_mask], color_B+'*')
-        ax1.plot(phase_B[~flag_mask], evaluation_data.RV_B[i][~flag_mask], color_B+'x')
+        ax1.plot(phase_B, evaluation_data.RV_B[i], color_B+'*')
         ax1.set_xlabel('Orbital Phase')
         ax1.set_ylabel('Radial Velocity - system velocity (km/s)', fontsize=15)
 
@@ -358,9 +354,5 @@ def compare_interval_results_multiple_spectra(evaluation_data: RoutineResults, b
     ax.set_ylabel('Component B RV - SV (km/s)')
 
     plt.show(block=block)
-
-
-def compare_separated_spectra_with(evaluation_data: RoutineResults):
-    pass
 
 
