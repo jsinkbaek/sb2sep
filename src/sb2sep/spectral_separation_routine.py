@@ -422,7 +422,6 @@ def recalculate_RVs(
 
                 corrected_flux_A = corrected_flux_A[~buffer_mask]
 
-                options.RV_A = RV_collection_A[i]
                 # Generate fit parameter object
                 ifitparams_A = InitialFitParameters(
                     options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
@@ -433,7 +432,7 @@ def recalculate_RVs(
                 # Perform calculation
                 template_shifted = shift_spectrum(flux_templateA, RV_collection_A[i], delta_v)
                 BRsvd_template_A = BroadeningFunction(
-                    1 - flux_collection[~buffer_mask, 0], 1 - template_shifted[~buffer_mask], v_span, delta_v
+                    1 - flux_collection[~buffer_mask, i], 1 - template_shifted[~buffer_mask], v_span, delta_v
                 )
                 BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
                 RV_deviation_A, model_A = radial_velocity_single_component(
@@ -580,12 +579,11 @@ def recalculate_RVs_orders(
                             if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                                 corrected_flux_A = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
-                        options.RV_A = RV_collection_orders_A[j, i]
                         ifitparams_A = InitialFitParameters(
                             options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A,
                             options.limbd_coef_A,
                             options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
-                            options.vsini_vary_limit_A, options.vary_limbd_coef_A, options.RV_A
+                            options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0
                         )
                         template_shifted = shift_spectrum(  # shift template to reduce boundary issues
                             flux_templateA, RV_collection_orders_A[j, i], delta_v
@@ -596,7 +594,6 @@ def recalculate_RVs_orders(
                             v_span, delta_v
                         )
                         BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
-                        ifitparams_A.RV = 0.0
                         rva_temp, bf_fitres_A[j, i] = radial_velocity_single_component(
                             corrected_flux_A, BRsvd_template_A, ifitparams_A
                         )
@@ -610,12 +607,11 @@ def recalculate_RVs_orders(
                             if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                                 corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
-                        options.RV_B = RV_collection_orders_B[j, i]
                         ifitparams_B = InitialFitParameters(
                             options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B,
                             options.limbd_coef_B,
                             options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
-                            options.vsini_vary_limit_B, options.vary_limbd_coef_B, options.RV_B
+                            options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0
                         )
                         template_shifted = shift_spectrum(
                             flux_templateB[mask_collection_orders[:, j, i]], RV_collection_orders_B[j, i], delta_v
@@ -625,7 +621,6 @@ def recalculate_RVs_orders(
                             1 - template_shifted, v_span, delta_v
                         )
                         BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
-                        ifitparams_B.RV = 0.0
                         rvb_temp, bf_fitres_B[j, i] = radial_velocity_single_component(
                             corrected_flux_B, BRsvd_template_B, ifitparams_B
                         )
@@ -705,11 +700,11 @@ def _rv_loop_orders(
                     if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                         corrected_flux_A = 1 - flux_collection_orders[:, j, i]
                 corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
-                options.RV_A = RV_collection_orders_A[j, i]
+
                 ifitparams_A = InitialFitParameters(
                     options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
                     options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
-                    options.vsini_vary_limit_A, options.vary_limbd_coef_A, options.RV_A
+                    options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0
                 )
                 template_shifted = shift_spectrum(  # shift template to reduce boundary issues
                     flux_templateA, RV_collection_orders_A[j, i], delta_v
@@ -720,7 +715,6 @@ def _rv_loop_orders(
                     v_span, delta_v
                 )
                 BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
-                ifitparams_A.RV = 0.0
                 rva_temp, bf_fitres_A[j, i] = radial_velocity_single_component(
                     corrected_flux_A, BRsvd_template_A, ifitparams_A
                 )
@@ -738,7 +732,7 @@ def _rv_loop_orders(
                 ifitparams_B = InitialFitParameters(
                     options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
                     options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
-                    options.vsini_vary_limit_B, options.vary_limbd_coef_B, options.RV_B
+                    options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0
                 )
                 template_shifted = shift_spectrum(
                     flux_templateB[mask_collection_orders[:, j, i]], RV_collection_orders_B[j, i], delta_v
@@ -748,7 +742,6 @@ def _rv_loop_orders(
                     1 - template_shifted, v_span, delta_v
                 )
                 BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
-                ifitparams_B.RV = 0.0
                 rvb_temp, bf_fitres_B[j, i] = radial_velocity_single_component(
                     corrected_flux_B, BRsvd_template_B, ifitparams_B
                 )
