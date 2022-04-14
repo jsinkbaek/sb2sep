@@ -236,7 +236,7 @@ def separate_component_spectra_orders(
                             separated_flux_A += weights[i] * shifted_flux_A
                         overlap_mean += shift_spectrum(overlap_weights[:, j, i], -rvA, delta_v)
                     n_used_spectra += weights[i] * overlap_mean
-            elif use_spectra_A != 0:
+            elif use_spectra_A.size != 0:
                 pass
             else:
                 raise TypeError(
