@@ -840,11 +840,11 @@ def _plot_ssr_iteration(
     f1_ax1.plot(xval[RV_below_limit_mask], RV_A[RV_below_limit_mask], 'bx')
     f1_ax1.plot(xval[RV_below_limit_mask], RV_B[RV_below_limit_mask], 'rx')
 
-    f1_ax2.plot(wavelength, 1-separated_flux_A, 'b', linewidth=2)
-    f1_ax2.plot(wavelength, 1-flux_template_A, '--', color='grey', linewidth=0.5)
+    f1_ax2.plot(wavelength, flux_template_A, '--', color='grey', linewidth=0.25)
+    f1_ax2.plot(wavelength, separated_flux_A, 'b', linewidth=2)
 
-    f1_ax3.plot(wavelength, 1-separated_flux_B, 'r', linewidth=2)
-    f1_ax3.plot(wavelength, 1-flux_template_B, '--', color='grey', linewidth=0.5)
+    f1_ax3.plot(wavelength, flux_template_B, '--', color='grey', linewidth=0.25)
+    f1_ax3.plot(wavelength, separated_flux_B, 'r', linewidth=2)
 
     f1_ax1.set_ylabel('Radial Velocity [km/s]')
     f1_ax2.set_ylabel('Normalized Flux')
@@ -1010,8 +1010,8 @@ def spectral_separation_routine(
 
         if options.plot:
             _plot_ssr_iteration(
-                f1_ax1, f1_ax2, f1_ax3, 1-separated_flux_A, 1-separated_flux_B, wavelength, 1-flux_templateA,
-                1-flux_templateB, RV_collection_A, RV_collection_B, time_values, period,
+                f1_ax1, f1_ax2, f1_ax3, separated_flux_A, separated_flux_B, wavelength, flux_templateA,
+                flux_templateB, RV_collection_A, RV_collection_B, time_values, period,
                 buffer_mask, sep_comp_options.rv_lower_limit, sep_comp_options.rv_proximity_limit
             )
 

@@ -13,6 +13,10 @@ dependencies = [
     "barycorrpy >= 0.4.1",
     "astropy >= 4.1",
 ]
+requires-python = ""
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
 
 keywords = ["SB2 binary analysis", "astronomy", "spectroscopy"]
 
@@ -21,6 +25,8 @@ requires = [
     "setuptools",
     "wheel"
 ]
+build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+package-dir = {"" = "src"}
+license-files = ['LICENSE']         # might change with PEP 639

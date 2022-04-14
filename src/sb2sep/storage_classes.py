@@ -25,6 +25,8 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
             routine_options.save_path = col1[index]
         elif value == 'return_unbuffered':
             routine_options.return_unbuffered = bool(col1[index])
+        elif value == 'plot_order':
+            routine_options.plot_order = int(col1[index])
         else:
             raise KeyError(f'Routine options config file key {value} not supported.')
 
@@ -303,7 +305,8 @@ class RoutineOptions:
             save_plot_path=None,
             save_all_results=True,
             save_path='./',
-            filename_bulk=None
+            filename_bulk=None,
+            plot_order=0
     ):
         self.convergence_limit = convergence_limit
         self.iteration_limit = iteration_limit
@@ -314,3 +317,4 @@ class RoutineOptions:
         self.save_all_results = save_all_results
         self.save_path = save_path
         self.filename_bulk = filename_bulk
+        self.plot_order = plot_order
