@@ -1,6 +1,6 @@
 [project]
 name = 'sb2sep'
-version = '1.2.1.dev1'
+version = '1.2.1.dev2'
 description = "Separate Stellar Component Spectra in SB2 Binary System"
 authors = [{name = "Jeppe Sinkbaek Thomsen", email = "jeppest2@gmail.com"}]
 readme = "README.md"
@@ -10,12 +10,11 @@ dependencies = [
     "matplotlib >= 3.3.4",
     "lmfit >= 1.0.2",
     "joblib >= 0.17.0",
-    "barycorrpy >= 0.4.1",
-    "astropy >= 4.1",
 ]
-requires-python = ""
+requires-python = ">=3.6"
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
 ]
 
 keywords = ["SB2 binary analysis", "astronomy", "spectroscopy"]
