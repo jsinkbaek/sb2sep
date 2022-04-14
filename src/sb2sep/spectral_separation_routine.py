@@ -300,8 +300,6 @@ def separate_component_spectra_orders(
                 f'limit of {options.convergence_limit}. \nCurrent RMS_A: {RMS_A}. RMS_B: {RMS_B} \n'
                 'Returning last separated spectra.')
             break
-    if options.verbose is True:
-        print('n_spectra vs n_used_spectra: ', n_spectra, ' ', n_used_spectra)
     separated_flux_B += 1.0     # add back a continuum to second component
     separated_flux_A[np.isnan(separated_flux_A)] = 1.0
     separated_flux_B[np.isnan(separated_flux_B)] = 1.0
@@ -850,10 +848,11 @@ def _plot_ssr_iteration(
     f1_ax2.set_ylabel('Normalized Flux')
     f1_ax2.set_xlabel('Wavelength [Å]')
     f1_ax3.set_xlabel('Wavelength [Å]')
+    f1_ax3.set_ylim([0.0, 1.15])
+    f1_ax2.set_ylim([0.0, 1.15])
 
     plt.draw_all()
-    plt.show(block=False)
-    plt.pause(0.1)
+    plt.pause(1.5)
 
 
 def save_multi_image(filename):

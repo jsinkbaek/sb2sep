@@ -141,8 +141,12 @@ class RoutineResults:
 def load_routine_results(folder_path: str, filename_bulk_list: list):
     routine_results = RoutineResults()
     for filename_bulk in filename_bulk_list:
-        rvA_array = np.loadtxt(folder_path+filename_bulk+'_rvA.txt')
-        rvB_array = np.loadtxt(folder_path+filename_bulk+'_rvB.txt')
+        try:
+            rvA_array = np.loadtxt(folder_path+filename_bulk+'_rvA.txt')
+            rvB_array = np.loadtxt(folder_path+filename_bulk+'_rvB.txt')
+        except OSError:
+            rvA_array = np.loadtxt(folder_path + '_rvA.txt')
+            rvB_array = np.loadtxt(folder_path + '_rvB.txt')
         sep_array = np.loadtxt(folder_path+filename_bulk+'_sep_flux.txt')
         velA_array = np.loadtxt(folder_path+filename_bulk+'_velocities_A.txt')
         bfA_array = np.loadtxt(folder_path+filename_bulk+'_bfvals_A.txt')
@@ -156,8 +160,12 @@ def load_routine_results(folder_path: str, filename_bulk_list: list):
 
         wavelength, separated_flux_A, separated_flux_B = sep_array[:, 0], sep_array[:, 1], sep_array[:, 2]
         template_flux_A, template_flux_B = sep_array[:, 3], sep_array[:, 4]
-        time_values_A, RV_A = rvA_array[:, 0], rvA_array[:, 1]
-        time_values_B, RV_B = rvB_array[:, 0], rvB_array[:, 1]
+        if rvA_array[0, :].size != 2:
+            time_values_A, RV_A = rvA_array[:, 0], rvA_array[:, 1:]
+            time_values_B, RV_B = rvB_array[:, 0], rvB_array[:, 1:]
+        else:
+            time_values_A, RV_A = rvA_array[:, 0], rvA_array[:, 1]
+            time_values_B, RV_B = rvB_array[:, 0], rvB_array[:, 1]
         RV_A_initial, RV_B_initial = rvs_initial[:, 0], rvs_initial[:, 1]
 
         interval_result = IntervalResult(
@@ -194,8 +202,12 @@ def plot_rv_and_separated_spectra(
         phase_B = np.mod(evaluation_data.time_values_B[i], period) / period
         print(evaluation_data.time_values_A[i])
 
-        ax1.plot(phase_A, evaluation_data.RV_A[i], color_A+'*')
-        ax1.plot(phase_B, evaluation_data.RV_B[i], color_B+'*')
+        if evaluation_data.RV_A[i].ndim == 1:
+            ax1.plot(phase_A, evaluation_data.RV_A[i], color_A+'*')
+            ax1.plot(phase_B, evaluation_data.RV_B[i], color_B+'*')
+        else:
+            ax1.plot(phase_A, np.mean(evaluation_data.RV_A[i]), color_A + '*')
+            ax1.plot(phase_B, np.mean(evaluation_data.RV_B[i]), color_B + '*')
         ax1.set_xlabel('Orbital Phase')
         ax1.set_ylabel('Radial Velocity - system velocity (km/s)', fontsize=15)
 
