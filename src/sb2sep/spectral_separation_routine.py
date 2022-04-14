@@ -13,7 +13,7 @@ same author. Both follows the formula layout of the article:
 """
 import matplotlib.pyplot as plt
 
-from src.sb2sep.calculate_radial_velocities import radial_velocity_single_component
+from sb2sep.calculate_radial_velocities import radial_velocity_single_component
 from sb2sep.broadening_function_svd import *
 from sb2sep.storage_classes import InitialFitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
     RoutineOptions
