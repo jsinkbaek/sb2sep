@@ -608,7 +608,7 @@ def recalculate_RVs_orders(
                         # # Calculate RV_B # #
                         corrected_flux_B = (1 - flux_collection_orders[:, j, i]) - \
                                            (1 - shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
-                        if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
+                        if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
                             if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                                 corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
@@ -732,7 +732,7 @@ def _rv_loop_orders(
                 # # Calculate RV_B # #
                 corrected_flux_B = (1 - flux_collection_orders[:, j, i]) - \
                                    (1 - shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
-                if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
+                if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
                     if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                         corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                 corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
