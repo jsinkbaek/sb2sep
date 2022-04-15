@@ -139,6 +139,16 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
             rv_options.iteration_limit = int(col1[index])
         elif value == 'rv_lower_limit':
             rv_options.rv_lower_limit = float(col1[index])
+        elif value == 'evaluate_spectra_A':
+            if col1[index] == 'None':
+                rv_options.evaluate_spectra_A = None
+            else:
+                rv_options.evaluate_spectra_A = eval(col1[index])
+        elif value == 'evaluate_spectra_B':
+            if col1[index] == 'None':
+                rv_options.evaluate_spectra_B = None
+            else:
+                rv_options.evaluate_spectra_B = eval(col1[index])
         else:
             raise KeyError(f'RV options config file key {value} not supported.')
     return routine_options, sep_options, rv_options
@@ -210,7 +220,9 @@ class RadialVelocityOptions:
             convergence_limit=5e-3,
             rv_lower_limit=0.0,
             print_prec=6,
-            n_parallel_jobs=1
+            n_parallel_jobs=1,
+            evaluate_spectra_A=None,
+            evaluate_spectra_B=None
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini_A = vsini_guess_A
@@ -266,6 +278,9 @@ class RadialVelocityOptions:
         self.print_prec = print_prec
 
         self.n_parallel_jobs = n_parallel_jobs
+
+        self.evaluate_spectra_A = evaluate_spectra_A
+        self.evaluate_spectra_B = evaluate_spectra_B
 
 
 class SeparateComponentsOptions:

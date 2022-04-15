@@ -465,9 +465,13 @@ def recalculate_RVs(
                     corrected_flux_B, BRsvd_template_B, ifitparams_B
                 )
                 RV_collection_B[i] = RV_collection_B[i] + RV_deviation_B
-
-                if np.abs(RV_deviation_A) < options.convergence_limit and \
-                        np.abs(RV_deviation_B) < options.convergence_limit:
+                if options.verbose:
+                    print(
+                        f'RV dev spec {i}: {np.abs(RV_deviation_A):.{options.print_prec}f} (A) '
+                        f'{np.abs(RV_deviation_B):.{options.print_prec}f} (B)'
+                    )
+                if (np.abs(RV_deviation_A) < options.convergence_limit or i not in options.evaluate_spectra_A) and \
+                        (np.abs(RV_deviation_B) < options.convergence_limit or i not in options.evaluate_spectra_B):
                     if options.verbose:
                         print(f'RV: spectrum {i} successful.')
                     break
@@ -631,8 +635,9 @@ def recalculate_RVs_orders(
                             f'RV dev spec {i}: {np.abs(np.mean(RV_deviation_A)):.{options.print_prec}f} (A) '
                             f'{np.abs(np.mean(RV_deviation_B)):.{options.print_prec}f} (B)'
                         )
-                    if np.abs(np.mean(RV_deviation_A)) < options.convergence_limit and \
-                            np.abs(np.mean(RV_deviation_B)) < options.convergence_limit:
+                    if (np.abs(np.mean(RV_deviation_A)) < options.convergence_limit or i not in
+                        options.evaluate_spectrum_A) and (np.abs(np.mean(RV_deviation_B)) < options.convergence_limit
+                                                          or i not in options.evaluate_spectrum_B):
                         if options.verbose:
                             print(f'RV: spectrum {i} successful.')
                         break
@@ -752,8 +757,9 @@ def _rv_loop_orders(
                     f'RV dev spec {i}: {np.abs(np.mean(RV_deviation_A)):.{options.print_prec}f} (A) '
                     f'{np.abs(np.mean(RV_deviation_B)):.{options.print_prec}f} (B)'
                 )
-            if np.abs(np.mean(RV_deviation_A)) < options.convergence_limit and \
-                    np.abs(np.mean(RV_deviation_B)) < options.convergence_limit:
+            if (np.abs(np.mean(RV_deviation_A)) < options.convergence_limit or i not in options.evaluate_spectrum_A) \
+                    and (np.abs(np.mean(RV_deviation_B)) < options.convergence_limit or i not in
+                         options.evaluate_spectrum_B):
                 if options.verbose:
                     print(f'RV: spectrum {i} successful.')
                 break
@@ -957,26 +963,39 @@ def spectral_separation_routine(
                 RV_collection_B = RV_collection_B.reshape((1, RV_collection_B.size))
                 RV_collection_A = np.repeat(RV_collection_A, axis=0, repeats=flux_collection[0, :, 0].size)
                 RV_collection_B = np.repeat(RV_collection_B, axis=0, repeats=flux_collection[0, :, 0].size)
+        if RV_collection_A.ndim == 2:
+            rms_mask_A = np.zeros((RV_collection_A[0, :].size,), dtype=bool)
+            rms_mask_B = np.zeros((RV_collection_B[0, :].size,), dtype=bool)
+        else:
+            rms_mask_A = np.zeros((RV_collection_A.size,), dtype=bool)
+            rms_mask_B = np.zeros((RV_collection_B.size,), dtype=bool)
 
-        if sep_comp_options.rv_lower_limit == 0.0:
+        if rv_options.evaluate_spectra_A is not None:
+            rms_mask_A[rv_options.evaluate_spectra_A] = True
+        else:
+            rms_mask_A[:] = True
+
+        if rv_options.evaluate_spectra_B is not None:
+            rms_mask_B[rv_options.evaluate_spectra_B] = True
+        elif sep_comp_options.rv_lower_limit == 0.0:
             if RV_collection_A.ndim == 2:
-                RV_mask = np.abs(
+                rms_mask_B = np.abs(
                     np.mean(RV_collection_A, axis=0)-np.mean(RV_collection_B, axis=0)
                 ) > sep_comp_options.rv_proximity_limit
             else:
-                RV_mask = np.abs(RV_collection_A-RV_collection_B) > sep_comp_options.rv_proximity_limit
+                rms_mask_B = np.abs(RV_collection_A-RV_collection_B) > sep_comp_options.rv_proximity_limit
         else:
             if RV_collection_A.ndim == 2:
-                RV_mask = np.abs(
+                rms_mask_B = np.abs(
                     np.mean(RV_collection_A, axis=0) - np.mean(RV_collection_B, axis=0)
                 ) > sep_comp_options.rv_lower_limit
             else:
-                RV_mask = np.abs(RV_collection_A) > sep_comp_options.rv_lower_limit
+                rms_mask_B = np.abs(RV_collection_A) > sep_comp_options.rv_lower_limit
 
         if RV_collection_A.ndim == 2:
-            RMS_A, RMS_B = -np.mean(RV_collection_A, axis=0), -np.mean(RV_collection_B, axis=0)[RV_mask]
+            RMS_A, RMS_B = -np.mean(RV_collection_A, axis=0)[rms_mask_A], -np.mean(RV_collection_B, axis=0)[rms_mask_B]
         else:
-            RMS_A, RMS_B = -RV_collection_A, -RV_collection_B[RV_mask]
+            RMS_A, RMS_B = -RV_collection_A[rms_mask_A], -RV_collection_B[rms_mask_B]
 
         if flux_collection.ndim == 3:
             separated_flux_A, separated_flux_B = separate_component_spectra_orders(
@@ -1030,15 +1049,15 @@ def spectral_separation_routine(
 
         iterations += 1
         if RV_collection_A.ndim == 2:
-            RMS_A += np.mean(RV_collection_A, axis=0)
-            RMS_B += np.mean(RV_collection_B, axis=0)[RV_mask]
-            RMS_A = np.sqrt(np.sum(RMS_A**2)/np.mean(RV_collection_A, axis=0).size)
-            RMS_B = np.sqrt(np.sum(RMS_B**2)/np.mean(RV_collection_B, axis=0)[RV_mask].size)
+            RMS_A += np.mean(RV_collection_A, axis=0)[rms_mask_A]
+            RMS_B += np.mean(RV_collection_B, axis=0)[rms_mask_B]
+            RMS_A = np.sqrt(np.sum(RMS_A**2)/np.mean(RV_collection_A, axis=0)[rms_mask_A].size)
+            RMS_B = np.sqrt(np.sum(RMS_B**2)/np.mean(RV_collection_B, axis=0)[rms_mask_B].size)
         else:
             RMS_A += RV_collection_A
             RMS_B += RMS_B
-            RMS_A = np.sqrt(np.sum(RMS_A**2))/RV_collection_A.size
-            RMS_B = np.sqrt(np.sum(RMS_B**2))/RV_collection_B[RV_mask].size
+            RMS_A = np.sqrt(np.sum(RMS_A**2))/RV_collection_A[rms_mask_A].size
+            RMS_B = np.sqrt(np.sum(RMS_B**2))/RV_collection_B[rms_mask_B].size
         if options.verbose:
             print(f'RV_A RMS: {RMS_A}. ' + f'RV_B RMS: {RMS_B}.')
         if RMS_A < convergence_limit and RMS_B < convergence_limit:
@@ -1199,6 +1218,8 @@ def _create_wavelength_intervals(
     interval_buffer_mask = []
     separated_A_interval_collection = []
     separated_B_interval_collection = []
+    if wavelength_buffer_size is None:
+        wavelength_buffer_size = 0.0
     w_interval_start = wavelength[0] + wavelength_buffer_size
     i = 0
     while True:
@@ -1297,11 +1318,11 @@ def spectral_separation_routine_multiple_intervals(
         templateB_ = templB_interval_coll[i]
         buffer_mask_ = interval_buffer_mask[i]
 
-        RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp, RVb_flags = spectral_separation_routine(
+        RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp = spectral_separation_routine(
             flux_collection_, templateA_, templateB_,
             wavelength_, options, sep_comp_options, rv_options, RV_guess_collection, time_values=time_values,
             period=period, buffer_mask=buffer_mask_
         )
-        results.append([RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp, RVb_flags])
+        results.append([RV_A, RV_B, sep_flux_A, sep_flux_B, wl_temp])
     return results
 
