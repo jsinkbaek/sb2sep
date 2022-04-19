@@ -431,7 +431,7 @@ def recalculate_RVs(
 
                 # Perform calculation
                 template_shifted = shift_spectrum(flux_templateA, RV_collection_A[i], delta_v)
-                BRsvd_template_A = BroadeningFunction(
+                BRsvd_template_A = BroadeningFunction(  # observation flux is changed to corrected_flux_A later
                     1 - flux_collection[~buffer_mask, i], 1 - template_shifted[~buffer_mask], v_span, delta_v
                 )
                 BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
@@ -1037,8 +1037,9 @@ def spectral_separation_routine(
             for i in range(0, vsini_A.size):
                 _, _, vsini_A[i], _, _, _ = get_fit_parameter_values(bf_fitres_A[i][0].params)
                 _, _, vsini_B[i], _, _, _ = get_fit_parameter_values(bf_fitres_B[i][0].params)
-        rv_options.vsini_A = np.mean(vsini_A)
-        rv_options.vsini_B = np.mean(vsini_B)
+        if options.adjust_vsini is True:
+            rv_options.vsini_A = np.mean(vsini_A)
+            rv_options.vsini_B = np.mean(vsini_B)
         if rv_options.vsini_vary_limit_A is None:
             rv_options.vsini_vary_limit_A = 0.7
         if rv_options.vsini_vary_limit_B is None:
