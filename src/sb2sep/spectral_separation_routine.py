@@ -1054,8 +1054,8 @@ def spectral_separation_routine(
             RMS_A = np.sqrt(np.sum(RMS_A**2)/np.mean(RV_collection_A, axis=0)[rms_mask_A].size)
             RMS_B = np.sqrt(np.sum(RMS_B**2)/np.mean(RV_collection_B, axis=0)[rms_mask_B].size)
         else:
-            RMS_A += RV_collection_A
-            RMS_B += RMS_B
+            RMS_A += RV_collection_A[rms_mask_A]
+            RMS_B += RV_collection_B[rms_mask_B]
             RMS_A = np.sqrt(np.sum(RMS_A**2))/RV_collection_A[rms_mask_A].size
             RMS_B = np.sqrt(np.sum(RMS_B**2))/RV_collection_B[rms_mask_B].size
         if options.verbose:
