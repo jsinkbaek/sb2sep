@@ -70,7 +70,8 @@ def shift_wavelength_spectrum(wavelength, flux, radial_velocity_shift):
 
 def separate_component_spectra(
         flux_collection, radial_velocity_collection_A, radial_velocity_collection_B,
-        options: SeparateComponentsOptions
+        options: SeparateComponentsOptions, outside_separated_A=None, outside_separated_B=None,
+        weights_outside_A=None, weights_outside_B=None
 ):
     """
     Assumes that component A is the dominant component in the spectrum. Attempts to separate the two components using
@@ -85,8 +86,14 @@ def separate_component_spectra(
     :return separated_flux_A, separated_flux_B:   the separated and meaned total component spectra of A and B.
     """
     n_spectra = flux_collection[0, :].size
-    separated_flux_B = np.zeros((flux_collection[:, 0].size,))  # Set to 0 before iteration
-    separated_flux_A = np.zeros((flux_collection[:, 0].size,))
+    if outside_separated_A is not None and weights_outside_A is not None:
+        separated_flux_A = outside_separated_A
+    else:
+        separated_flux_A = np.zeros((flux_collection[:, 0].size,))
+    if outside_separated_B is not None and weights_outside_B is not None:
+        separated_flux_B = outside_separated_B
+    else:
+        separated_flux_B = np.zeros((flux_collection[:, 0].size,))  # Set to 0 before iteration
 
     use_spectra_A = options.use_for_spectral_separation_A
     use_spectra_B = options.use_for_spectral_separation_B
@@ -101,8 +108,13 @@ def separate_component_spectra(
         RMS_values_A = -separated_flux_A
         RMS_values_B = -separated_flux_B
         iteration_counter += 1
-        separated_flux_A[:] = 0.0
-        n_used_spectra = 0
+
+        if weights_outside_A is None:
+            separated_flux_A[:] = 0.0
+            n_used_spectra = 0
+        else:
+            separated_flux_A = np.copy(outside_separated_A)
+            n_used_spectra = np.copy(weights_outside_A)
         for i in range(0, n_spectra):
             if (use_spectra_A is None) or (i in use_spectra_A):
                 rvA = radial_velocity_collection_A[i]
@@ -129,8 +141,12 @@ def separate_component_spectra(
                                 f'Expected type: {type(True)} or np.ndarray. Expected value if bool: True')
         separated_flux_A = separated_flux_A / n_used_spectra
 
-        separated_flux_B[:] = 0.0
-        n_used_spectra = 0
+        if weights_outside_B is None:
+            separated_flux_B[:] = 0.0
+            n_used_spectra = 0
+        else:
+            separated_flux_B = np.copy(outside_separated_B)
+            n_used_spectra = np.copy(weights_outside_B)
         for i in range(0, n_spectra):
             if (use_spectra_B is None) or (i in use_spectra_B):
                 rvA = radial_velocity_collection_A[i]
@@ -871,7 +887,8 @@ def spectral_separation_routine(
         wavelength: np.ndarray,
         options: RoutineOptions, sep_comp_options: SeparateComponentsOptions, rv_options: RadialVelocityOptions,
         RV_guess_collection: np.ndarray, mask_collection_orders=None, time_values: np.ndarray = None,
-        period: float = None, buffer_mask: np.ndarray = None
+        period: float = None, buffer_mask: np.ndarray = None, outside_separated_A=None, outside_separated_B=None,
+        weights_outside_A=None, weights_outside_B=None
 ):
     """
     Routine that separates component spectra and calculates radial velocities by iteratively calling
@@ -1018,7 +1035,8 @@ def spectral_separation_routine(
             )
         else:
             separated_flux_A, separated_flux_B = separate_component_spectra(
-                flux_collection, RV_collection_A, RV_collection_B, sep_comp_options
+                flux_collection, RV_collection_A, RV_collection_B, sep_comp_options, outside_separated_A,
+                outside_separated_B, weights_outside_A, weights_outside_B
             )
 
         if flux_collection.ndim == 3:

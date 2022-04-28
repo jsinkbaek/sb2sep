@@ -159,7 +159,6 @@ sep_comp_options.use_for_spectral_separation_B = spectral_separation_array_B
 
 print(spectral_separation_array_A)
 print(spectral_separation_array_B)
-sys.exit()
 # # Verify RA and DEC # #
 RA, DEC = RA_array[0], DEC_array[0]
 
