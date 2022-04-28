@@ -952,6 +952,21 @@ def spectral_separation_routine(
     if flux_collection.ndim == 3:
         overlap_weights = _calculate_overlap(mask_collection_orders)
 
+    if rv_options.evaluate_spectra_A is None:
+        if RV_collection_A.ndim == 1:
+            rv_options.evaluate_spectra_A = np.linspace(0, RV_collection_A.size-1, RV_collection_A.size, dtype=int)
+        else:
+            rv_options.evaluate_spectra_A = np.linspace(
+                0, RV_collection_A[0, :].size-1, RV_collection_A[0, :].size, dtype=int
+            )
+    if rv_options.evaluate_spectra_B is None:
+        if RV_collection_B.ndim == 1:
+            rv_options.evaluate_spectra_B = np.linspace(0, RV_collection_B.size-1, RV_collection_B.size, dtype=int)
+        else:
+            rv_options.evaluate_spectra_B = np.linspace(
+                0, RV_collection_B[0, :].size-1, RV_collection_B[0, :].size, dtype=int
+            )
+
     # Iterative loop that repeatedly separates the spectra from each other in order to calculate new RVs (Gonzales 2005)
     iterations = 0
     print('Spectral Separation: ')

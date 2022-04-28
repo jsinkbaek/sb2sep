@@ -9,11 +9,18 @@ import scipy.constants as scc
 import matplotlib.pyplot as plt
 import matplotlib
 
-from src.sb2sep import spectrum_processing_functions as spf
-from src.sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions, load_configuration_files
-import src.sb2sep.spectral_separation_routine as ssr
-from src.sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
-import src.sb2sep.calculate_radial_velocities as cRV
+try:
+    from src.sb2sep import spectrum_processing_functions as spf
+    from src.sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions, load_configuration_files
+    import src.sb2sep.spectral_separation_routine as ssr
+    from src.sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
+    import src.sb2sep.calculate_radial_velocities as cRV
+except ModuleNotFoundError:
+    from sb2sep import spectrum_processing_functions as spf
+    from sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions, load_configuration_files
+    import sb2sep.spectral_separation_routine as ssr
+    from sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
+    import sb2sep.calculate_radial_velocities as cRV
 import warnings
 
 matplotlib.rcParams.update({'font.size': 25})
@@ -150,6 +157,9 @@ for filename in os.listdir(data_path):
 sep_comp_options.use_for_spectral_separation_A = spectral_separation_array_A        # see notes earlier
 sep_comp_options.use_for_spectral_separation_B = spectral_separation_array_B
 
+print(spectral_separation_array_A)
+print(spectral_separation_array_B)
+sys.exit()
 # # Verify RA and DEC # #
 RA, DEC = RA_array[0], DEC_array[0]
 
@@ -219,9 +229,9 @@ RV_guess_collection[:, 1] = RV_guesses_B
 ########################### SEPARATION ROUTINE CALLS #################################
 # # #  Separate component spectra and calculate RVs iteratively for large interval # # #
 interval_results = ssr.spectral_separation_routine_multiple_intervals(
-    wavelength_buffered, wavelength_intervals_full, flux_collection_inverted_buffered,
-    flux_template_A_inverted_buffered,
-    flux_template_B_inverted_buffered,
+    wavelength_buffered, wavelength_intervals_full, 1-flux_collection_inverted_buffered,
+    1-flux_template_A_inverted_buffered,
+    1-flux_template_B_inverted_buffered,
     RV_guess_collection,
     routine_options, sep_comp_options, rv_options,
     wavelength_buffer_size, time_values=bjdtdb-(2400000+54976.6348), period=orbital_period_estimate
@@ -229,9 +239,9 @@ interval_results = ssr.spectral_separation_routine_multiple_intervals(
 
 # # # Calculate error # # #
 interval_results = ssr.spectral_separation_routine_multiple_intervals(
-     wavelength_buffered, wavelength_intervals, flux_collection_inverted_buffered,
-     flux_template_A_inverted_buffered,
-     flux_template_B_inverted_buffered,
+     wavelength_buffered, wavelength_intervals, 1-flux_collection_inverted_buffered,
+     1-flux_template_A_inverted_buffered,
+     1-flux_template_B_inverted_buffered,
      RV_guess_collection,
      routine_options, sep_comp_options, rv_options,
      wavelength_buffer_size, time_values=bjdtdb-(2400000+54976.6348), period=orbital_period_estimate
