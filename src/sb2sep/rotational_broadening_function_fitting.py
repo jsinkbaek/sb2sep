@@ -67,7 +67,7 @@ def weight_function(
     if radial_velocity_guess is None:
         peak_idx = np.argmax(broadening_function_values)
         mask = (velocities > velocities[peak_idx] - velocity_fit_half_width) & \
-               (velocities < velocities[peak_idx] + velocity_fit_half_width + 1)
+               (velocities < velocities[peak_idx] + velocity_fit_half_width)
     else:
         mask = (velocities > radial_velocity_guess - velocity_fit_half_width) & \
                (velocities < radial_velocity_guess + velocity_fit_half_width)

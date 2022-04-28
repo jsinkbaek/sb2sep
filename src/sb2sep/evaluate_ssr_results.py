@@ -200,7 +200,6 @@ def plot_rv_and_separated_spectra(
 
         phase_A = np.mod(evaluation_data.time_values_A[i], period) / period
         phase_B = np.mod(evaluation_data.time_values_B[i], period) / period
-        print(evaluation_data.time_values_A[i])
 
         if evaluation_data.RV_A[i].ndim == 1:
             ax1.plot(phase_A, evaluation_data.RV_A[i], color_A+'*')
