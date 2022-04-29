@@ -87,11 +87,13 @@ def separate_component_spectra(
     """
     n_spectra = flux_collection[0, :].size
     if outside_separated_A is not None and weights_outside_A is not None:
-        separated_flux_A = outside_separated_A
+        # separated_flux_A = outside_separated_A
+        separated_flux_A = np.zeros((flux_collection[:, 0].size,))
     else:
         separated_flux_A = np.zeros((flux_collection[:, 0].size,))
     if outside_separated_B is not None and weights_outside_B is not None:
-        separated_flux_B = outside_separated_B
+        # separated_flux_B = outside_separated_B
+        separated_flux_B = np.zeros((flux_collection[:, 0].size,))
     else:
         separated_flux_B = np.zeros((flux_collection[:, 0].size,))  # Set to 0 before iteration
 
@@ -113,7 +115,7 @@ def separate_component_spectra(
             separated_flux_A[:] = 0.0
             n_used_spectra = 0
         else:
-            separated_flux_A = np.copy(outside_separated_A)
+            separated_flux_A = weights_outside_A * outside_separated_A
             n_used_spectra = np.copy(weights_outside_A)
         for i in range(0, n_spectra):
             if (use_spectra_A is None) or (i in use_spectra_A):
@@ -145,7 +147,7 @@ def separate_component_spectra(
             separated_flux_B[:] = 0.0
             n_used_spectra = 0
         else:
-            separated_flux_B = np.copy(outside_separated_B)
+            separated_flux_B = weights_outside_B * outside_separated_B
             n_used_spectra = np.copy(weights_outside_B)
         for i in range(0, n_spectra):
             if (use_spectra_B is None) or (i in use_spectra_B):
@@ -448,7 +450,7 @@ def recalculate_RVs(
                 # Perform calculation
                 template_shifted = shift_spectrum(flux_templateA, RV_collection_A[i], delta_v)
                 BRsvd_template_A = BroadeningFunction(  # observation flux is changed to corrected_flux_A later
-                    1 - flux_collection[~buffer_mask, i], 1 - template_shifted[~buffer_mask], v_span, delta_v
+                    corrected_flux_A, 1 - template_shifted[~buffer_mask], v_span, delta_v
                 )
                 BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
                 RV_deviation_A, model_A = radial_velocity_single_component(
@@ -466,7 +468,6 @@ def recalculate_RVs(
 
                 corrected_flux_B = corrected_flux_B[~buffer_mask]
 
-                options.RV_B = RV_collection_B[i]
                 ifitparams_B = InitialFitParameters(
                     options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
                     options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
@@ -474,7 +475,7 @@ def recalculate_RVs(
                 )
                 template_shifted = shift_spectrum(flux_templateB, RV_collection_B[i], delta_v)
                 BRsvd_template_B = BroadeningFunction(
-                    1 - flux_collection[~buffer_mask, 0], 1 - template_shifted[~buffer_mask], v_span, delta_v
+                    corrected_flux_B, 1 - template_shifted[~buffer_mask], v_span, delta_v
                 )
                 BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
                 RV_deviation_B, model_B = radial_velocity_single_component(
@@ -1073,10 +1074,6 @@ def spectral_separation_routine(
         if options.adjust_vsini is True:
             rv_options.vsini_A = np.mean(vsini_A)
             rv_options.vsini_B = np.mean(vsini_B)
-        if rv_options.vsini_vary_limit_A is None:
-            rv_options.vsini_vary_limit_A = 0.7
-        if rv_options.vsini_vary_limit_B is None:
-            rv_options.vsini_vary_limit_B = 0.7
         if options.verbose:
             print('vsini A: ', rv_options.vsini_A)
             print('vsini B: ', rv_options.vsini_B)

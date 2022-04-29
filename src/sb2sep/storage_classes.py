@@ -11,24 +11,24 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
         elif value == 'iteration_limit':
             routine_options.iteration_limit = int(col1[index])
         elif value == 'plot':
-            routine_options.plot = bool(col1[index])
+            routine_options.plot = col1[index] == 'True'        # False if col1[index] != 'True'
         elif value == 'verbose':
-            routine_options.verbose = bool(col1[index])
+            routine_options.verbose = col1[index] == 'True'
         elif value == 'save_plot_path':
             if col1[index] == 'None':
                 routine_options.save_plot_path = None
             else:
                 routine_options.save_plot_path = col1[index]
         elif value == 'save_all_results':
-            routine_options.save_all_results = bool(col1[index])
+            routine_options.save_all_results = col1[index] == 'True'
         elif value == 'save_path':
             routine_options.save_path = col1[index]
         elif value == 'return_unbuffered':
-            routine_options.return_unbuffered = bool(col1[index])
+            routine_options.return_unbuffered = col1[index] == 'True'
         elif value == 'plot_order':
             routine_options.plot_order = int(col1[index])
         elif value == 'adjust_vsini':
-            routine_options.adjust_vsini = bool(col1[index])
+            routine_options.adjust_vsini = col1[index] == 'True'
         else:
             raise KeyError(f'Routine options config file key {value} not supported.')
 
@@ -65,7 +65,7 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
                 eval_list = eval(col1[index])
                 sep_options.weights = np.array(eval_list)
         elif value == 'verbose':
-            sep_options.verbose = bool(col1[index])
+            sep_options.verbose = col1[index] == 'True'
         else:
             raise KeyError(f'Separation options config file key {value} not supported.')
 
@@ -78,9 +78,9 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
         elif value == 'vsini_guess_B':
             rv_options.vsini_B = float(col1[index])
         elif value == 'vary_vsini_A':
-            rv_options.vary_vsini_A = bool(col1[index])
+            rv_options.vary_vsini_A = col1[index] == 'True'
         elif value == 'vary_vsini_B':
-            rv_options.vary_vsini_B = bool(col1[index])
+            rv_options.vary_vsini_B = col1[index] == 'True'
         elif value == 'vsini_vary_limit_A':
             if col1[index] == 'None':
                 rv_options.vsini_vary_limit_A = None
@@ -120,9 +120,9 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
         elif value == 'limbd_coef_B':
             rv_options.limbd_coef_B = float(col1[index])
         elif value == 'vary_limbd_coef_A':
-            rv_options.vary_limbd_coef_A = bool(col1[index])
+            rv_options.vary_limbd_coef_A = col1[index] == 'True'
         elif value == 'vary_limbd_coef_B':
-            rv_options.vary_limbd_coef_B = bool(col1[index])
+            rv_options.vary_limbd_coef_B = col1[index] == 'True'
         elif value == 'ignore_at_phase_A':
             if col1[index] == 'None':
                 rv_options.ignore_at_phase_A = None
@@ -134,7 +134,7 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
             else:
                 rv_options.ignore_at_phase_B = eval(col1[index])
         elif value == 'verbose':
-            rv_options.verbose = bool(col1[index])
+            rv_options.verbose = col1[index] == 'True'
         elif value == 'convergence_limit':
             rv_options.convergence_limit = float(col1[index])
         elif value == 'iteration_limit':
@@ -283,6 +283,7 @@ class RadialVelocityOptions:
 
         self.evaluate_spectra_A = evaluate_spectra_A
         self.evaluate_spectra_B = evaluate_spectra_B
+
 
 
 class SeparateComponentsOptions:
