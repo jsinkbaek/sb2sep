@@ -210,7 +210,6 @@ class BroadeningFunction:
     def smooth(self):
         """
         Smoothes a calculated broadening function by convolving with a gaussian function.
-        TODO: Set so that the smoothing sigma can be calculated from spectrum resolution (2.354 * FWHM) (why?)
         """
         if self.bf is None:
             raise TypeError('self.bf is None. self.solve() must be run prior to smoothing the broadening function.')

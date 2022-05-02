@@ -5,7 +5,7 @@ Supervisor: Assistant Professor Karsten Frank Brogaard.
 
 A rotational broadening function fitting routine, with the model profile used, and all the relevant steps until the
 lmfit minimizer method is called. Code is adapted from the shazam.py library for the SONG telescope
-(written by Emil Knudstrup and others)
+(written by Emil Knudstrup and Jens Jessen-Hansen)
 """
 
 import numpy as np
