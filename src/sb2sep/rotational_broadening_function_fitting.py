@@ -157,8 +157,8 @@ def fitting_routine_rotational_broadening_profile(
     else:
         params.add('vsini', value=ifitparams.vsini, vary=ifitparams.vary_vsini)
     params.add('gaussian_width', value=gaussian_width, vary=False)
-    params.add('continuum_constant', value=0.0, min=np.min(broadening_function_values),
-               max=np.max(broadening_function_values))
+    params.add('continuum_constant', value=ifitparams.continuum, min=np.min(broadening_function_values),
+               max=np.max(broadening_function_values), vary=ifitparams.vary_continuum)
     params.add('limbd_coef', value=ifitparams.limbd_coef, vary=ifitparams.vary_limbd_coef)
 
     fit = lmfit.minimize(compare_func, params, args=(velocities, broadening_function_values, weight_function_values),

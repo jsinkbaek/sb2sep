@@ -29,6 +29,10 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
             routine_options.plot_order = int(col1[index])
         elif value == 'adjust_vsini':
             routine_options.adjust_vsini = col1[index] == 'True'
+        elif value == 'delta_v':
+            routine_options.delta_v = float(col1[index])
+        elif value == 'filename_bulk':
+            routine_options.filename_bulk = col1[index]
         else:
             raise KeyError(f'Routine options config file key {value} not supported.')
 
@@ -168,7 +172,9 @@ class InitialFitParameters:
             vary_vsini=False,
             vsini_vary_limit=None,
             vary_limbd_coef=False,
-            RV=None
+            RV=None,
+            continuum=0.0,
+            vary_continuum=True
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini = vsini_guess
@@ -189,6 +195,9 @@ class InitialFitParameters:
         self.bf_smooth_sigma = smooth_sigma
         # Width of the broadening function (in velocity space)
         self.bf_velocity_span = bf_velocity_span
+        # Continuum value, and whether to fit for it
+        self.continuum = continuum
+        self.vary_continuum = vary_continuum
 
 
 class RadialVelocityOptions:
@@ -325,7 +334,8 @@ class RoutineOptions:
             save_path='./',
             filename_bulk=None,
             plot_order=0,
-            adjust_vsini=True
+            adjust_vsini=True,
+            delta_v=1.0
     ):
         self.convergence_limit = convergence_limit
         self.iteration_limit = iteration_limit
@@ -338,3 +348,4 @@ class RoutineOptions:
         self.filename_bulk = filename_bulk
         self.plot_order = plot_order
         self.adjust_vsini = adjust_vsini
+        self.delta_v = delta_v
