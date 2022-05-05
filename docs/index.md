@@ -15,14 +15,14 @@ An example script utilizing the modules of this package to perform radial veloci
 
 ## Code modules ##
 
-- [spectral_separation_routine](https://github.com/jsinkbaek/sb2sep/tree/main/src/sb2sepspectral_separation_routine.py)
-- [broadening_function_svd](https://github.com/jsinkbaek/sb2sep/tree/main/src/sb2sepbroadening_function_svd.py)
-- [spectral_processing_functions](https://github.com/jsinkbaek/sb2sep/tree/main/src/sb2sepspectrum_processing_functions.py)
-- [storage_classes](https://github.com/jsinkbaek/sb2sep/tree/main/src/sb2sepstorage_classes.py)
-- [calculate_radial_velocities](https://github.com/jsinkbaek/sb2sep/tree/main/src/sb2sepcalculate_radial_velocities.py)
-- [rotational_broadening_function_fitting](https://github.com/jsinkbaek/sb2sep/tree/main/src/sb2seprotational_broadening_function_fitting.py)
-- [linear_limbd_coeff_estimate](https://github.com/jsinkbaek/sb2sep/tree/main/src/sb2sepsb2sep/linear_limbd_coeff_estimate.py)
-- [evaluate_ssr_results](https://github.com/jsinkbaek/sb2sep/tree/main/src/sb2sepsb2sep/evaluate_ssr_results.py)
+- [spectral_separation_routine](https://github.com/jsinkbaek/sb2sep/blob/main/src/sb2sep/spectral_separation_routine.py)
+- [broadening_function_svd](https://github.com/jsinkbaek/sb2sep/blob/main/src/sb2sep/broadening_function_svd.py)
+- [spectral_processing_functions](https://github.com/jsinkbaek/sb2sep/blob/main/src/sb2sep/spectrum_processing_functions.py)
+- [storage_classes](https://github.com/jsinkbaek/sb2sep/blob/main/src/sb2sep/storage_classes.py)
+- [calculate_radial_velocities](https://github.com/jsinkbaek/sb2sep/blob/main/src/sb2sep/calculate_radial_velocities.py)
+- [rotational_broadening_function_fitting](https://github.com/jsinkbaek/sb2sep/blob/main/src/sb2sep/rotational_broadening_function_fitting.py)
+- [linear_limbd_coeff_estimate](https://github.com/jsinkbaek/sb2sep/blob/main/src/sb2sep/linear_limbd_coeff_estimate.py)
+- [evaluate_ssr_results](https://github.com/jsinkbaek/sb2sep/blob/main/src/sb2sep/evaluate_ssr_results.py)
 
 
 [Next page: Installation](installation)
