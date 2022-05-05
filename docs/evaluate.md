@@ -1,4 +1,8 @@
 # Evaluating output
+*Note: The plots shown are slightly out-dated as of version 1.2.6. Currently, the RV routine shifts the template with the best
+RV guess to improve the quality of the calculated broadening function. As such, new plots will show all 
+broadening function peaks aligning close to 0 if converged.*
+
 The `evaluate_ssr_results` module provides convenient ways to evaluate the raw data output from the spectral separation routine with similar plots to those provided during routine execution.
 
 ## Load data

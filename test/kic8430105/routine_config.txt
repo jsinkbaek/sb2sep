@@ -3,12 +3,14 @@
 # Each non-empty line must include a parameter name followed by its value.
 # Trailing comments are allowed after this.
 
+delta_v 1.0             # (km/s) MUST BE SET TO THE SAME VALUE AS USED TO RESAMPLE SPECTRA to EQUISPACED VELOCITY GRID
+
 convergence_limit 1E-5		# Convergence criteria for RMS of radial velocities needed to exit 
 				# routine.
 
 iteration_limit 2		# Maximum allowed iterations of parent routine before automatic exit.
 
-plot True			# If True, diagnostic plots are shown and updated between iterations.
+plot True			    # If True, diagnostic plots are shown and updated between iterations.
 
 verbose True			# Indicates if parent routine should print extra updates to console.
 
@@ -20,6 +22,18 @@ save_all_results True		# If True, raw output data is saved to disk before return
 
 save_path results/		# Defines the folder that raw data is saved to when save_all_results
 				# is True.
+
+filename_bulk test     # Defines the naming scheme for the output. If not provided or None, naming scheme is chosen as
+                       # 'min(wl)_max(wl)'
+
+adjust_vsini False  # If True, vsini guess of both components will be set to the mean value found during RV subroutine
+                    # after every iteration
+
+
+# Conditional options:
+
+plot_order 10       # Indicates the order index to plot RVs for, if using individual orders
+                    # and not a merged spectrum. If not, this does nothing.
 
 return_unbuffered True		# If True, any padding of spectra introduced and handled with the
 				# buffer_mask parameter will be removed before returning results from

@@ -32,7 +32,10 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
         elif value == 'delta_v':
             routine_options.delta_v = float(col1[index])
         elif value == 'filename_bulk':
-            routine_options.filename_bulk = col1[index]
+            if col1[index] == 'None':
+                routine_options.filename_bulk = None
+            else:
+                routine_options.filename_bulk = col1[index]
         else:
             raise KeyError(f'Routine options config file key {value} not supported.')
 
@@ -292,7 +295,6 @@ class RadialVelocityOptions:
 
         self.evaluate_spectra_A = evaluate_spectra_A
         self.evaluate_spectra_B = evaluate_spectra_B
-
 
 
 class SeparateComponentsOptions:

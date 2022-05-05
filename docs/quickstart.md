@@ -31,7 +31,10 @@ To do this, the spectral orders must first be interpolated to the same wavelengt
 range of each with a value of 1.0. Therefore **flux_collection** must have the shape (data.size, n_orders, n_spectra). A
 mask array **mask_collection_orders** must then be supplied (same shape). Applying it to each spectral order, for example order 0 spectrum 0 with
 `` flux_collection[mask_collection_orders[:, 0, 0], 0, 0]``,
- should then return only the flux values within the given order.
+ should then return only the flux values within the given order. The sub-routines using spectral orders are a bit outdated relative
+to the traditional use. Generally, I do not expect many cases to have high enough S/N for both components to be able to
+utilize this feature properly and recommend that most uses supply merged spectra to the routine and use the 
+`spectral_separation_routine_multiple_intervals()` wrapper.
 
 RV_guess_collection can have either shape (n_orders, n_spectra, 2) or (n_spectra, 2) in this case. If the latter, each order is
 assumed to have the same initial RV guess, which is generally a decent assumption.

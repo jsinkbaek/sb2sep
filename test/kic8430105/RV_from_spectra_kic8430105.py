@@ -71,7 +71,7 @@ system_RV_estimate = 12.61          # to subtract before routine
 orbital_period_estimate = 63.327     # for ignoring component B during eclipse
 
 # # Initial fit parameters for rotational broadening function fit # #
-bf_velocity_span = 300        # broadening function span in velocity space
+bf_velocity_span = 150        # broadening function span in velocity space
 limbd_A = 0.68          # estimate_linear_limbd(wavelength_RV_limit, logg_A, Teff_A, MH_A, mTur_A, loc='Data/tables/atlasco.dat')
 limbd_B = 0.68          # estimate_linear_limbd(wavelength_RV_limit, logg_B, Teff_B, MH_B, mTur_B, loc='Data/tables/atlasco.dat')
 
@@ -182,40 +182,35 @@ wavelength_template_B, flux_template_B = spf.load_template_spectrum(template_spe
 flux_template_B = flux_template_B[0, :]
 
 # # Resample to same wavelength grid, equi-spaced in velocity space # #
-wavelength, (flux_collection_array, flux_template_A, flux_template_B) = spf.resample_multiple_spectra(
+wavelength, (flux_collection, flux_template_A, flux_template_B) = spf.resample_multiple_spectra(
     delta_v, (wavelength_collection_list, flux_collection_list), (wavelength_template_A, flux_template_A),
     (wavelength_template_B, flux_template_B)
 )
 
-# # Invert fluxes # #
-flux_collection_inverted = 1 - flux_collection_array
-flux_template_A_inverted = 1 - flux_template_A
-flux_template_B_inverted = 1 - flux_template_B
-
 # # Perform barycentric corrections # #
-for i in range(0, flux_collection_inverted[0, :].size):
-    flux_collection_inverted[:, i] = ssr.shift_spectrum(
-        flux_collection_inverted[:, i], bc_rv_cor[i]-system_RV_estimate, delta_v
+for i in range(0, flux_collection[0, :].size):
+    flux_collection[:, i] = ssr.shift_spectrum(
+        flux_collection[:, i], bc_rv_cor[i]-system_RV_estimate, delta_v
     )
 
 # # Shorten spectra if uneven # #
-wavelength, [flux_collection_inverted, flux_template_A_inverted, flux_template_B_inverted] = \
-    spf.make_spectrum_even(wavelength, [flux_collection_inverted, flux_template_A_inverted, flux_template_B_inverted])
+wavelength, [flux_collection, flux_template_A, flux_template_B] = \
+    spf.make_spectrum_even(wavelength, [flux_collection, flux_template_A, flux_template_B])
 
 
 # # Limit data-set to specified area (wavelength_RV_limit) # #
 wavelength, flux_unbuffered_list, wavelength_buffered, flux_buffered_list, buffer_mask = \
     spf.limit_wavelength_interval_multiple_spectra(
-        wavelength_RV_limit, wavelength, flux_collection_inverted, flux_template_A_inverted, flux_template_B_inverted,
+        wavelength_RV_limit, wavelength, flux_collection, flux_template_A, flux_template_B,
         buffer_size=wavelength_buffer_size, even_length=True
     )
-[flux_collection_inverted, flux_template_A_inverted, flux_template_B_inverted] = flux_unbuffered_list
-[flux_collection_inverted_buffered, flux_template_A_inverted_buffered, flux_template_B_inverted_buffered] = \
+[flux_collection, flux_template_A, flux_template_B] = flux_unbuffered_list
+[flux_collection_buffered, flux_template_A_buffered, flux_template_B_buffered] = \
     flux_buffered_list
 
 # # Calculate broadening function RVs to use as initial guesses # #
 RV_guesses_A, _ = cRV.radial_velocities_of_multiple_spectra(
-    flux_collection_inverted, flux_template_A_inverted, rv_options, number_of_parallel_jobs=4,
+    1-flux_collection, flux_template_A, rv_options, number_of_parallel_jobs=4,
     plot=False, fit_two_components=False
 )
 RV_guess_collection = np.empty((RV_guesses_A.size, 2))
@@ -228,9 +223,9 @@ RV_guess_collection[:, 1] = RV_guesses_B
 ########################### SEPARATION ROUTINE CALLS #################################
 # # #  Separate component spectra and calculate RVs iteratively for large interval # # #
 interval_results = ssr.spectral_separation_routine_multiple_intervals(
-    wavelength_buffered, wavelength_intervals_full, 1-flux_collection_inverted_buffered,
-    1-flux_template_A_inverted_buffered,
-    1-flux_template_B_inverted_buffered,
+    wavelength_buffered, wavelength_intervals_full, flux_collection_buffered,
+    flux_template_A_buffered,
+    flux_template_B_buffered,
     RV_guess_collection,
     routine_options, sep_comp_options, rv_options,
     wavelength_buffer_size, time_values=bjdtdb-(2400000+54976.6348), period=orbital_period_estimate
@@ -238,9 +233,9 @@ interval_results = ssr.spectral_separation_routine_multiple_intervals(
 
 # # # Calculate error # # #
 interval_results = ssr.spectral_separation_routine_multiple_intervals(
-     wavelength_buffered, wavelength_intervals, 1-flux_collection_inverted_buffered,
-     1-flux_template_A_inverted_buffered,
-     1-flux_template_B_inverted_buffered,
+     wavelength_buffered, wavelength_intervals, flux_collection_buffered,
+     flux_template_A_buffered,
+     flux_template_B_buffered,
      RV_guess_collection,
      routine_options, sep_comp_options, rv_options,
      wavelength_buffer_size, time_values=bjdtdb-(2400000+54976.6348), period=orbital_period_estimate

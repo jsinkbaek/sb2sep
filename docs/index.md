@@ -11,17 +11,18 @@ An example script utilizing the modules of this package to perform radial veloci
 3. [Routine options](routine_options)
 4. [Accessing outputs](results)
 5. [Preparing spectra](preparation)
+6. [Evaluating output](evaluate)
 
-Modules:
+## Code modules ##
 
-- spectral_separation_routine
-- broadening_function_svd
-- spectral_processing_functions
-- storage_classes
-- calculate_radial_velocities
-- rotational_broadening_function_fitting
-- linear_limbd_coeff_estimate
-- evaluate_ssr_results
+- [spectral_separation_routine](../src/sb2sep/spectral_separation_routine.py)
+- [broadening_function_svd](../src/sb2sep/broadening_function_svd.py)
+- [spectral_processing_functions](../src/sb2sep/spectrum_processing_functions.py)
+- [storage_classes](../src/sb2sep/storage_classes.py)
+- [calculate_radial_velocities](../src/sb2sep/calculate_radial_velocities.py)
+- [rotational_broadening_function_fitting](../src/sb2sep/rotational_broadening_function_fitting.py)
+- [linear_limbd_coeff_estimate](../src/sb2sep/linear_limbd_coeff_estimate.py)
+- [evaluate_ssr_results](../src/sb2sep/evaluate_ssr_results.py)
 
 
 [Next page: Installation](installation)

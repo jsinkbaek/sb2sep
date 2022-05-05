@@ -86,3 +86,4 @@ Returns (2 components):
 - **RVs_B** (numpy array)
 - tuple(bf_velocity, bf_vals, bf_vals_smooth, model_vals_A, model_vals_B)
 
+[Next Page: Evaluating output](evaluate)

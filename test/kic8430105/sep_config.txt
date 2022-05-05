@@ -3,29 +3,34 @@
 # Each non-empty line must include a parameter name followed by its value.
 # Trailing comments are allowed after this.
 
-delta_v 1.0		# (km/s) MUST BE SET EQUAL TO THE DELTA_V USED TO RESAMPLE SPECTRA.
-
 convergence_limit 1E-2	# Convergence criteria for changes induced in the separated component spectra
 			# between subroutine iterations.
 
 max_iterations 10	# Maximum allowed iterations for this subroutine.
 
 rv_proximity_limit 0.0	# If not 0.0, can be used to exclude spectra from calculation of separated
-			# components if RV difference between components is lower than this. 
+			# components if absolute RV difference between components is lower than this.
 			# Ignored if rv_lower_limit or use_for_spectral_separation_A and B
-			# are supplied.
-rv_lower_limit 0.0	# If not 0.0, used to exclude spectra from calculation if RV of component A
-			# is below this. Ignored if use_for_spectral_separation_A and B are supplied.
+			# are supplied. Recommended value: 0.0
+rv_lower_limit 0.0	# If not 0.0, used to exclude spectra from calculation if absolute value of RV of component A
+			# is below this. Ignored if use_for_spectral_separation_A and B are supplied. Recommended value: 0.0
 
-use_for_spectral_separation_A None  # List of integers indicating the indices of spectra to
-				    # use when calculating separated spectrum for component A.
-				    # If 5 out of 21 spectra are used for this, this list should have
-				    # length 5. Example: [0,2,6,11,15]. No whitespace can be used.
-				    # This is the recommended way to include/exclude spectra.
-use_for_spectral_separation_B None  # same, but for calculation of component B separated spectrum.
+use_for_spectral_separation_A None      # List or None
+            # NO WHITESPACE ALLOWED IN ABOVE LIST.
+            # List of integers indicating the indices of spectra to
+		    # use when calculating separated spectrum for component A.
+		    # If 5 out of 21 spectra are used for this, this list should have
+		    # length 5. Example: [0,2,6,11,15].
+		    # This is the recommended way to include/exclude spectra.
+use_for_spectral_separation_B None
+            # NO WHITESPACE ALLOWED IN ABOVE LIST.
+		    # same, but for calculation of component B separated spectrum.
 
-weights None		# List of weights to give to each spectrum during this calculation.
+weights None		# List or None.
+            # NO WHITESPACE ALLOWED IN ABOVE LIST.
+            # List of weights to give to each spectrum during this calculation.
 			# If provided, must have same length as number of spectra supplied to routine,
 			# not just same length as number of spectra used in component calculation.
+			# Example (6 spectra): [5.0,0.5,1.0,1.2,120,0.0]    NOTE: No whitespace :)
 
 verbose False		# If True, provides additional prints to console.
