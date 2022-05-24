@@ -16,6 +16,7 @@ try:
     from src.sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
     import src.sb2sep.calculate_radial_velocities as cRV
 except ModuleNotFoundError:
+    print('Using installed package sb2sep.')
     from sb2sep import spectrum_processing_functions as spf
     from sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions, load_configuration_files
     import sb2sep.spectral_separation_routine as ssr

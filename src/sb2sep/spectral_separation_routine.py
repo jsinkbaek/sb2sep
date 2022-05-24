@@ -1,7 +1,7 @@
 """
 First edition May 02/2021.
 Package version: December 08/2021.
-@author Jeppe Sinkbæk Thomsen, Master's thesis studen at Aarhus University.
+@author Jeppe Sinkbæk Thomsen, Master's thesis student at Aarhus University.
 Supervisor: Karsten Frank Brogaard.
 
 This is a collection of functions that form a routine to perform spectral separation of detached eclipsing binaries
@@ -15,9 +15,8 @@ import matplotlib.pyplot as plt
 
 from sb2sep.calculate_radial_velocities import radial_velocity_single_component
 from sb2sep.broadening_function_svd import *
-from sb2sep.storage_classes import InitialFitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
+from sb2sep.storage_classes import FitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
     RoutineOptions
-from sb2sep.rotational_broadening_function_fitting import get_fit_parameter_values
 import sb2sep.spectrum_processing_functions as spf
 import numpy as np
 from copy import deepcopy
@@ -350,7 +349,7 @@ def _calculate_overlap(mask_collection_orders):
     return overlap_weights
 
 
-def _update_bf_plot(plot_ax, model, RV_actual, index):
+def _update_bf_plot(plot_ax, model, RV_actual, get_fit_parameter_values, index):
     fit = model[0]
     model_values = model[1]
     velocity_values = model[2]
@@ -367,7 +366,7 @@ def _update_bf_plot(plot_ax, model, RV_actual, index):
 def recalculate_RVs(
         flux_collection: np.ndarray, separated_flux_A: np.ndarray, separated_flux_B: np.ndarray,
         RV_collection_A: np.ndarray, RV_collection_B: np.ndarray, flux_templateA: np.ndarray,
-        flux_templateB: np.ndarray, buffer_mask: np.ndarray, options: RadialVelocityOptions,
+        flux_templateB: np.ndarray, buffer_mask: np.ndarray, options: RadialVelocityOptions, get_fit_parameter_values,
         plot_ax_A=None, plot_ax_B=None, time_values=None, period=None
 ):
     """
@@ -447,7 +446,7 @@ def recalculate_RVs(
                 corrected_flux_A = corrected_flux_A[~buffer_mask]
 
                 # Generate fit parameter object
-                ifitparams_A = InitialFitParameters(
+                fitparams_A = FitParameters(
                     options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
                     options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
                     options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0, continuum=continuum_A,
@@ -461,7 +460,7 @@ def recalculate_RVs(
                 )
                 BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
                 RV_deviation_A, model_A = radial_velocity_single_component(
-                    corrected_flux_A, BRsvd_template_A, ifitparams_A
+                    corrected_flux_A, BRsvd_template_A, fitparams_A
                 )
                 RV_collection_A[i] = RV_collection_A[i] + RV_deviation_A
 
@@ -475,7 +474,7 @@ def recalculate_RVs(
 
                 corrected_flux_B = corrected_flux_B[~buffer_mask]
 
-                ifitparams_B = InitialFitParameters(
+                fitparams_B = FitParameters(
                     options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
                     options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
                     options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0, continuum=continuum_B,
@@ -487,7 +486,7 @@ def recalculate_RVs(
                 )
                 BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
                 RV_deviation_B, model_B = radial_velocity_single_component(
-                    corrected_flux_B, BRsvd_template_B, ifitparams_B
+                    corrected_flux_B, BRsvd_template_B, fitparams_B
                 )
                 RV_collection_B[i] = RV_collection_B[i] + RV_deviation_B
                 if options.verbose:
@@ -511,12 +510,12 @@ def recalculate_RVs(
 
         rv_lower_limit = options.rv_lower_limit
         if plot_ax_A is not None:
-            _update_bf_plot(plot_ax_A, model_A, RV_collection_A[i], i)
+            _update_bf_plot(plot_ax_A, model_A, RV_collection_A[i], get_fit_parameter_values, i)
             if rv_lower_limit != 0.0:
                 plot_ax_A.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
                 plot_ax_A.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
         if plot_ax_B is not None:
-            _update_bf_plot(plot_ax_B, model_B, RV_collection_B[i], i)
+            _update_bf_plot(plot_ax_B, model_B, RV_collection_B[i], get_fit_parameter_values, i)
             if rv_lower_limit != 0.0:
                 plot_ax_B.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
                 plot_ax_B.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
@@ -530,7 +529,8 @@ def recalculate_RVs(
 
 def recalculate_RVs_orders(
         flux_collection_orders, mask_collection_orders, separated_flux_A, separated_flux_B, RV_collection_orders_A,
-        RV_collection_orders_B, flux_templateA, flux_templateB, options: RadialVelocityOptions, plot_ax_A=None,
+        RV_collection_orders_B, flux_templateA, flux_templateB, options: RadialVelocityOptions,
+        get_fit_parameter_values, plot_ax_A=None,
         plot_ax_B=None, time_values=None, period=None, plot_order=0
 ):
     """
@@ -570,12 +570,16 @@ def recalculate_RVs_orders(
 
             rv_lower_limit = options.rv_lower_limit
             if plot_ax_A is not None:
-                _update_bf_plot(plot_ax_A, bf_fitres_A[0, i], RV_collection_orders_A[0, i], i)
+                _update_bf_plot(
+                    plot_ax_A, bf_fitres_A[0, i], RV_collection_orders_A[0, i], get_fit_parameter_values, i
+                )
                 if rv_lower_limit != 0.0:
                     plot_ax_A.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
                     plot_ax_A.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
             if plot_ax_B is not None:
-                _update_bf_plot(plot_ax_B, bf_fitres_B[0, i], RV_collection_orders_B[0, i], i)
+                _update_bf_plot(
+                    plot_ax_B, bf_fitres_B[0, i], RV_collection_orders_B[0, i], get_fit_parameter_values, i
+                )
                 if rv_lower_limit != 0.0:
                     plot_ax_B.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
                     plot_ax_B.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
@@ -608,7 +612,7 @@ def recalculate_RVs_orders(
                             if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                                 corrected_flux_A = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
-                        ifitparams_A = InitialFitParameters(
+                        fitparams_A = FitParameters(
                             options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A,
                             options.limbd_coef_A,
                             options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
@@ -624,7 +628,7 @@ def recalculate_RVs_orders(
                         )
                         BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
                         rva_temp, bf_fitres_A[j, i] = radial_velocity_single_component(
-                            corrected_flux_A, BRsvd_template_A, ifitparams_A
+                            corrected_flux_A, BRsvd_template_A, fitparams_A
                         )
                         RV_deviation_A[j] = rva_temp
                         RV_collection_orders_A[j, i] = rva_temp + RV_collection_orders_A[j, i]
@@ -636,7 +640,7 @@ def recalculate_RVs_orders(
                             if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                                 corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
-                        ifitparams_B = InitialFitParameters(
+                        fitparams_B = FitParameters(
                             options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B,
                             options.limbd_coef_B,
                             options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
@@ -651,7 +655,7 @@ def recalculate_RVs_orders(
                         )
                         BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
                         rvb_temp, bf_fitres_B[j, i] = radial_velocity_single_component(
-                            corrected_flux_B, BRsvd_template_B, ifitparams_B
+                            corrected_flux_B, BRsvd_template_B, fitparams_B
                         )
                         RV_deviation_B[j] = rvb_temp
                         RV_collection_orders_B[j, i] = rvb_temp + RV_collection_orders_B[j, i]
@@ -731,7 +735,7 @@ def _rv_loop_orders(
                         corrected_flux_A = 1 - flux_collection_orders[:, j, i]
                 corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
 
-                ifitparams_A = InitialFitParameters(
+                fitparams_A = FitParameters(
                     options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
                     options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
                     options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0
@@ -746,7 +750,7 @@ def _rv_loop_orders(
                 )
                 BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
                 rva_temp, bf_fitres_A[j, i] = radial_velocity_single_component(
-                    corrected_flux_A, BRsvd_template_A, ifitparams_A
+                    corrected_flux_A, BRsvd_template_A, fitparams_A
                 )
                 RV_deviation_A[j] = rva_temp
                 RV_collection_orders_A[j, i] = rva_temp + RV_collection_orders_A[j, i]
@@ -759,7 +763,7 @@ def _rv_loop_orders(
                         corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                 corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
                 options.RV_B = RV_collection_orders_B[j, i]
-                ifitparams_B = InitialFitParameters(
+                fitparams_B = FitParameters(
                     options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
                     options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
                     options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0
@@ -773,7 +777,7 @@ def _rv_loop_orders(
                 )
                 BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
                 rvb_temp, bf_fitres_B[j, i] = radial_velocity_single_component(
-                    corrected_flux_B, BRsvd_template_B, ifitparams_B
+                    corrected_flux_B, BRsvd_template_B, fitparams_B
                 )
                 RV_deviation_B[j] = rvb_temp
                 RV_collection_orders_B[j, i] = rvb_temp + RV_collection_orders_B[j, i]
@@ -954,6 +958,12 @@ def spectral_separation_routine(
                 separated_flux_A.size = flux_templateA[buffer_mask].size. Same for the returned wavelength.
                 This can be disabled by setting return_unbuffered=False in the options object.
     """
+    if rv_options.fitting_profile == 'RotBF':
+        from .rotational_broadening_function_fitting import get_fit_parameter_values
+    elif rv_options.fitting_profile == 'Gaussian':
+        from .gaussian_fitting import get_fit_parameter_values
+    else:
+        raise ValueError('Unrecognised fitting routine.')
 
     if RV_guess_collection.ndim == 2:
         RV_collection_A, RV_collection_B = np.copy(RV_guess_collection[:, 0]), np.copy(RV_guess_collection[:, 1])
@@ -1053,13 +1063,14 @@ def spectral_separation_routine(
         if flux_collection.ndim == 3:
             RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs_orders(
                 flux_collection, mask_collection_orders, separated_flux_A, separated_flux_B, RV_collection_A,
-                RV_collection_B, flux_templateA, flux_templateB, rv_options, plot_ax_A=f3_ax1, plot_ax_B=f4_ax1,
+                RV_collection_B, flux_templateA, flux_templateB, rv_options, get_fit_parameter_values,
+                plot_ax_A=f3_ax1, plot_ax_B=f4_ax1,
                 time_values=time_values, period=period, plot_order=options.plot_order
             )
         else:
             RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs(
                 flux_collection, separated_flux_A, separated_flux_B, RV_collection_A, RV_collection_B,
-                flux_templateA, flux_templateB, buffer_mask, rv_options, plot_ax_A=f3_ax1,
+                flux_templateA, flux_templateB, buffer_mask, rv_options, get_fit_parameter_values, plot_ax_A=f3_ax1,
                 plot_ax_B=f4_ax1, time_values=time_values, period=period
             )
 

@@ -1,8 +1,9 @@
 from sb2sep.broadening_function_svd import *
-from sb2sep.rotational_broadening_function_fitting import get_fit_parameter_values
+import sb2sep.rotational_broadening_function_fitting as rbff
+import sb2sep.gaussian_fitting as gf
 from copy import copy
 from joblib import Parallel, delayed
-from sb2sep.storage_classes import InitialFitParameters, RadialVelocityOptions
+from sb2sep.storage_classes import FitParameters, RadialVelocityOptions
 import numpy as np
 
 
@@ -19,12 +20,12 @@ def radial_velocity_2_components(
     BFsvd.smooth()
 
     # Fit rotational broadening function profile to Giant peak
-    ifitparams_A = InitialFitParameters(
+    fitparams_A = FitParameters(
         options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
         options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A, options.vsini_vary_limit_A,
         options.vary_limbd_coef_A, options.RV_A
     )
-    fit_A, model_values_A = BFsvd.fit_rotational_profile(ifitparams_A)
+    fit_A, model_values_A = BFsvd.fit_rotational_profile(fitparams_A)
 
     # Create Broadening Function for star B
     bf, bf_smooth = BFsvd.bf, BFsvd.bf_smooth
@@ -35,12 +36,12 @@ def radial_velocity_2_components(
     # Fit rotational broadening function profile for MS peak
     if options.limbd_coef_B is None:
         options.limbd_coef_B = options.limbd_coef_A
-    ifitparams_B = InitialFitParameters(
+    fitparams_B = FitParameters(
         options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
         options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B, options.vsini_vary_limit_B,
         options.vary_limbd_coef_B, options.RV_B
     )
-    fit_B, model_values_B = BFsvd.fit_rotational_profile(ifitparams_B)
+    fit_B, model_values_B = BFsvd.fit_rotational_profile(fitparams_B)
 
     _, RV_A, _, _, _, _ = get_fit_parameter_values(fit_A.params)
     _, RV_B, _, _, _, _ = get_fit_parameter_values(fit_B.params)
@@ -137,12 +138,12 @@ def radial_velocities_of_multiple_spectra(
         arguments = (broadening_function_template, options)
         calc_function = radial_velocity_2_components
     else:
-        ifitparams = InitialFitParameters(
+        fitparams = FitParameters(
             options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
             options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A, options.vsini_vary_limit_A,
             options.vary_limbd_coef_A, options.RV_A
         )
-        arguments = (broadening_function_template, ifitparams)
+        arguments = (broadening_function_template, fitparams)
         calc_function = radial_velocity_single_component
 
     # Create parallel call to calculate radial velocities
@@ -167,7 +168,7 @@ def radial_velocities_of_multiple_spectra(
 def radial_velocity_single_component(
         inv_flux: np.ndarray,
         broadening_function_template: BroadeningFunction,
-        ifitparams: InitialFitParameters
+        fitparams: FitParameters
 ):
     """
     Calculates the broadening function of a spectrum and fits a single rotational broadening function profile to it.
@@ -176,7 +177,7 @@ def radial_velocity_single_component(
     
     :param inv_flux:                     np.ndarray. Inverted flux of the program spectrum (e.g. 1-normalized_flux)
     :param broadening_function_template: BroadeningFunction. The template used to calculate the broadening function.
-    :param ifitparams:                   InitialFitParameters. Object that stores the fitting parameters needed.
+    :param fitparams:                   InitialFitParameters. Object that stores the fitting parameters needed.
     :return:    RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth)
                 RV:                 float, the fitted RV value
                 fit:                lmfit.MinimizerResult. The object storing the fit parameters.
@@ -193,8 +194,17 @@ def radial_velocity_single_component(
     BFsvd.smooth()
 
     # Fit rotational broadening function profile
-    fit, model_values = BFsvd.fit_rotational_profile(ifitparams)
+    if fitparams.fitting_profile == 'RotBF':
+        fitting_routine = rbff.fitting_routine_rotational_broadening_profile
+        get_fit_parameter_values = rbff.get_fit_parameter_values
+    elif fitparams.fitting_profile == 'Gaussian':
+        fitting_routine = gf.fitting_routine_gaussian_profile
+        get_fit_parameter_values = gf.get_fit_parameter_values
+    else:
+        raise ValueError('Unrecognised fitting profile selected.')
+    fit, model_values = BFsvd.fit_rotational_profile(fitparams, fitting_routine)
 
-    _, RV, _, _, _, _ = get_fit_parameter_values(fit.params)
+    res = get_fit_parameter_values(fit.params)
+    RV = res[1]
 
     return RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth)

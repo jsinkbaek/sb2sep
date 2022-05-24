@@ -158,12 +158,17 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
                 rv_options.evaluate_spectra_B = None
             else:
                 rv_options.evaluate_spectra_B = eval(col1[index])
+        elif value == 'fitting_profile':
+            if col1[index] == 'RotBF' or col1[index] == 'Gaussian':
+                rv_options.fitting_profile = col1[index]
+            else:
+                raise ValueError("RV options: Unrecognised fitting profile selected. Either use 'RotBF' or 'Gaussian'.")
         else:
             raise KeyError(f'RV options config file key {value} not supported.')
     return routine_options, sep_options, rv_options
 
 
-class InitialFitParameters:
+class FitParameters:
     def __init__(
             self,
             vsini_guess=1.0,
@@ -177,7 +182,8 @@ class InitialFitParameters:
             vary_limbd_coef=False,
             RV=None,
             continuum=0.0,
-            vary_continuum=True
+            vary_continuum=True,
+            fitting_profile='RotBF'
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini = vsini_guess
@@ -201,6 +207,8 @@ class InitialFitParameters:
         # Continuum value, and whether to fit for it
         self.continuum = continuum
         self.vary_continuum = vary_continuum
+        # Fitting profile to use (either 'RotBF' or 'Gaussian'
+        self.fitting_profile = fitting_profile
 
 
 class RadialVelocityOptions:
@@ -236,7 +244,8 @@ class RadialVelocityOptions:
             print_prec=6,
             n_parallel_jobs=1,
             evaluate_spectra_A=None,
-            evaluate_spectra_B=None
+            evaluate_spectra_B=None,
+            fitting_profile='RotBF'
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini_A = vsini_guess_A
@@ -295,6 +304,8 @@ class RadialVelocityOptions:
 
         self.evaluate_spectra_A = evaluate_spectra_A
         self.evaluate_spectra_B = evaluate_spectra_B
+
+        self.fitting_profile = fitting_profile
 
 
 class SeparateComponentsOptions:

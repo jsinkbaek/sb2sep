@@ -12,7 +12,7 @@ import numpy as np
 from scipy.signal import fftconvolve
 import lmfit
 import scipy.constants as scc
-from sb2sep.storage_classes import InitialFitParameters
+from sb2sep.storage_classes import FitParameters
 
 
 def rotational_broadening_function_profile(
@@ -110,7 +110,7 @@ def compare_broadening_function_with_profile(
 
 
 def fitting_routine_rotational_broadening_profile(
-        velocities: np.ndarray, broadening_function_values: np.ndarray, ifitparams:InitialFitParameters,
+        velocities: np.ndarray, broadening_function_values: np.ndarray, fitparams: FitParameters,
         smooth_sigma: float, dv: float, print_report=False, compare_func=compare_broadening_function_with_profile
 ):
     """
@@ -119,7 +119,7 @@ def fitting_routine_rotational_broadening_profile(
     broadening function.
     :param velocities:                  np.ndarray, velocity values of the broadening function.
     :param broadening_function_values:  np.ndarray, observed broadening function values.
-    :param ifitparams:                  an object holding the initial fit parameters:
+    :param fitparams:                  an object holding the initial fit parameters:
             vsini_guess:                float, guess for the v sin(i) fit parameter for the model.
             limbd_coef:                 float, a linear limb darkening coefficient for the profile. This routine will
                                         not fit this parameter.
@@ -136,33 +136,44 @@ def fitting_routine_rotational_broadening_profile(
                                         model: np.ndarray, model values of the broadening function according to the fit.
     """
     speed_of_light = scc.c / 1000  # in km/s
-    gaussian_width = np.sqrt(((speed_of_light/ifitparams.spectral_resolution)/(2.354 * dv))**2 + (smooth_sigma/dv)**2)
+    gaussian_width = np.sqrt(((speed_of_light/fitparams.spectral_resolution)/(2.354 * dv))**2 + (smooth_sigma/dv)**2)
     params = lmfit.Parameters()
 
-    weight_function_values = weight_function(velocities, broadening_function_values, ifitparams.velocity_fit_width,
-                                             ifitparams.RV)
+    weight_function_values = weight_function(
+        velocities, broadening_function_values, fitparams.velocity_fit_width, fitparams.RV
+    )
     peak_idx = np.argmax(broadening_function_values*weight_function_values)
     params.add('amplitude', value=broadening_function_values[peak_idx], min=0.0)
-    if ifitparams.RV is None:
-        params.add('radial_velocity_cm', value=velocities[peak_idx],
-                   min=velocities[peak_idx]-ifitparams.velocity_fit_width,
-                   max=velocities[peak_idx]+ifitparams.velocity_fit_width)
+    if fitparams.RV is None:
+        params.add(
+            'radial_velocity_cm', value=velocities[peak_idx],
+            min=velocities[peak_idx]-fitparams.velocity_fit_width,
+            max=velocities[peak_idx]+fitparams.velocity_fit_width
+        )
     else:
-        params.add('radial_velocity_cm', value=ifitparams.RV, min=ifitparams.RV-ifitparams.velocity_fit_width,
-                   max=ifitparams.RV+ifitparams.velocity_fit_width)
-    if ifitparams.vsini_vary_limit is not None:
-        params.add('vsini', value=ifitparams.vsini, vary=ifitparams.vary_vsini,
-                   min=ifitparams.vsini - ifitparams.vsini*ifitparams.vsini_vary_limit,
-                   max=ifitparams.vsini + ifitparams.vsini*ifitparams.vsini_vary_limit)
+        params.add(
+            'radial_velocity_cm', value=fitparams.RV, min=fitparams.RV-fitparams.velocity_fit_width,
+            max=fitparams.RV+fitparams.velocity_fit_width
+        )
+    if fitparams.vsini_vary_limit is not None:
+        params.add(
+            'vsini', value=fitparams.vsini, vary=fitparams.vary_vsini,
+            min=fitparams.vsini - fitparams.vsini*fitparams.vsini_vary_limit,
+            max=fitparams.vsini + fitparams.vsini*fitparams.vsini_vary_limit
+        )
     else:
-        params.add('vsini', value=ifitparams.vsini, vary=ifitparams.vary_vsini)
+        params.add('vsini', value=fitparams.vsini, vary=fitparams.vary_vsini)
     params.add('gaussian_width', value=gaussian_width, vary=False)
-    params.add('continuum_constant', value=ifitparams.continuum, min=np.min(broadening_function_values),
-               max=np.max(broadening_function_values), vary=ifitparams.vary_continuum)
-    params.add('limbd_coef', value=ifitparams.limbd_coef, vary=ifitparams.vary_limbd_coef)
+    params.add(
+        'continuum_constant', value=fitparams.continuum, min=np.min(broadening_function_values),
+        max=np.max(broadening_function_values), vary=fitparams.vary_continuum
+    )
+    params.add('limbd_coef', value=fitparams.limbd_coef, vary=fitparams.vary_limbd_coef)
 
-    fit = lmfit.minimize(compare_func, params, args=(velocities, broadening_function_values, weight_function_values),
-                         xtol=1E-8, ftol=1E-8, max_nfev=500)
+    fit = lmfit.minimize(
+        compare_func, params, args=(velocities, broadening_function_values, weight_function_values),
+        xtol=1E-8, ftol=1E-8, max_nfev=500
+    )
     if print_report:
         print(lmfit.fit_report(fit, show_correl=False))
 

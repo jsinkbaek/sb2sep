@@ -13,7 +13,7 @@ Some of the import statements lacking below are imported from rotational_broaden
 import scipy.linalg as lg
 import warnings
 from sb2sep.rotational_broadening_function_fitting import *
-from sb2sep.storage_classes import InitialFitParameters
+from sb2sep.storage_classes import FitParameters
 import matplotlib.pyplot as plt
 from copy import copy
 
@@ -220,7 +220,7 @@ class BroadeningFunction:
 
     def fit_rotational_profile(
             self,
-            ifitparams: InitialFitParameters,
+            fitparams: FitParameters,
             fitting_routine=fitting_routine_rotational_broadening_profile
     ):
         """
@@ -242,7 +242,7 @@ class BroadeningFunction:
             raise TypeError('self.bf_smooth. self.smooth() must be run prior to fitting')
 
         self.fit, self.model_values = fitting_routine(
-            self.velocity, self.bf_smooth, ifitparams, self.smooth_sigma, self.dv
+            self.velocity, self.bf_smooth, fitparams, self.smooth_sigma, self.dv
         )
         return self.fit, self.model_values
 

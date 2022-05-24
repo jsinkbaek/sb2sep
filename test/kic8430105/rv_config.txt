@@ -57,3 +57,8 @@ evaluate_spectra_B None  # to evaluate convergence. F.ex., if evaluate_spectra_A
                          # convergence_limit (regardless of RV_B). And spectrum 1 will require both RV_A and RV_B to be
                          # below convergence_limit. Any other spectra will only do 1 iteration.
                          # This setting also indicates which RVs the parent routine should evaluate RMS for.
+fitting_profile Gaussian    # Specifies the fitting profile used to fit the broadening function. Can either be 'RotBF' for
+                         # 'rotational broadening function profile' or 'Gaussian' for a Gaussian profile. If 'Gaussian',
+                         # vsini related parameters relate to the Gaussian sigma value (before broadening function
+                         # smoothing and convolution to account for resolution). Limb darkening parameters are ignored
+                         # when using 'Gaussian'.
