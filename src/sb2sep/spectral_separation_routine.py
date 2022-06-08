@@ -349,12 +349,13 @@ def _calculate_overlap(mask_collection_orders):
     return overlap_weights
 
 
-def _update_bf_plot(plot_ax, model, RV_actual, get_fit_parameter_values, index):
+def _update_bf_plot(plot_ax, model, RV_actual, index):
     fit = model[0]
     model_values = model[1]
     velocity_values = model[2]
     bf_smooth_values = model[4]
-    _, RV_measured, _, _, _, _ = get_fit_parameter_values(fit.params)
+    RV_measured = fit.params['radial_velocity_cm'].value
+    # _, RV_measured, _, _, _, _ = get_fit_parameter_values(fit.params)
     RV_offset = RV_actual - RV_measured
     plot_ax.plot(velocity_values + RV_offset, 1+0.02*bf_smooth_values/np.max(bf_smooth_values)-0.05*index)
     plot_ax.plot(velocity_values + RV_offset, 1+0.02*model_values/np.max(bf_smooth_values)-0.05*index, 'k--')
@@ -428,8 +429,10 @@ def recalculate_RVs(
                 options.velocity_fit_width_A = options.refit_width_A
                 options.velocity_fit_width_B = options.refit_width_B
                 vary_continuum = False
-                _, _, _, _, continuum_A, _ = get_fit_parameter_values(model_A[0].params)
-                _, _, _, _, continuum_B, _ = get_fit_parameter_values(model_B[0].params)
+                # resa = get_fit_parameter_values(model_A[0].params)
+                # resb = get_fit_parameter_values(model_B[0].params)
+                continuum_A = model_A[0].params['continuum_constant'].value
+                continuum_B = model_B[0].params['continuum_constant'].value
 
             iterations = 0
             while True:
@@ -450,7 +453,7 @@ def recalculate_RVs(
                     options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
                     options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
                     options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0, continuum=continuum_A,
-                    vary_continuum=vary_continuum
+                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile
                 )
 
                 # Perform calculation
@@ -478,7 +481,7 @@ def recalculate_RVs(
                     options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
                     options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
                     options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0, continuum=continuum_B,
-                    vary_continuum=vary_continuum
+                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile
                 )
                 template_shifted = shift_spectrum(flux_templateB, RV_collection_B[i], delta_v)
                 BRsvd_template_B = BroadeningFunction(
@@ -510,12 +513,12 @@ def recalculate_RVs(
 
         rv_lower_limit = options.rv_lower_limit
         if plot_ax_A is not None:
-            _update_bf_plot(plot_ax_A, model_A, RV_collection_A[i], get_fit_parameter_values, i)
+            _update_bf_plot(plot_ax_A, model_A, RV_collection_A[i], i)
             if rv_lower_limit != 0.0:
                 plot_ax_A.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
                 plot_ax_A.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
         if plot_ax_B is not None:
-            _update_bf_plot(plot_ax_B, model_B, RV_collection_B[i], get_fit_parameter_values, i)
+            _update_bf_plot(plot_ax_B, model_B, RV_collection_B[i], i)
             if rv_lower_limit != 0.0:
                 plot_ax_B.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
                 plot_ax_B.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
@@ -571,14 +574,14 @@ def recalculate_RVs_orders(
             rv_lower_limit = options.rv_lower_limit
             if plot_ax_A is not None:
                 _update_bf_plot(
-                    plot_ax_A, bf_fitres_A[0, i], RV_collection_orders_A[0, i], get_fit_parameter_values, i
+                    plot_ax_A, bf_fitres_A[0, i], RV_collection_orders_A[0, i], i
                 )
                 if rv_lower_limit != 0.0:
                     plot_ax_A.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
                     plot_ax_A.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
             if plot_ax_B is not None:
                 _update_bf_plot(
-                    plot_ax_B, bf_fitres_B[0, i], RV_collection_orders_B[0, i], get_fit_parameter_values, i
+                    plot_ax_B, bf_fitres_B[0, i], RV_collection_orders_B[0, i], i
                 )
                 if rv_lower_limit != 0.0:
                     plot_ax_B.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
@@ -1086,12 +1089,24 @@ def spectral_separation_routine(
         if vsini_A.ndim == 2:
             for i in range(0, vsini_A[0, :].size):
                 for j in range(0, vsini_A[:, 0].size):
-                    _, _, vsini_A[j, i], _, _, _ = get_fit_parameter_values(bf_fitres_A[j, i][0].params)
-                    _, _, vsini_B[j, i], _, _, _ = get_fit_parameter_values(bf_fitres_B[j, i][0].params)
+                    if rv_options.fitting_profile == 'RotBF':
+                        vsini_A[j, i] = bf_fitres_A[j, i][0].params['vsini'].value
+                        vsini_B[j, i] = bf_fitres_B[j, i][0].params['vsini'].value
+                    elif rv_options.fitting_profile == 'Gaussian':
+                        vsini_A[j, i] = bf_fitres_A[j, i][0].params['gaussian_sigma'].value
+                        vsini_B[j, i] = bf_fitres_B[j, i][0].params['gaussian_sigma'].value
+                    else:
+                        raise ValueError('Unknown fitting profile selected.')
         else:
             for i in range(0, vsini_A.size):
-                _, _, vsini_A[i], _, _, _ = get_fit_parameter_values(bf_fitres_A[i][0].params)
-                _, _, vsini_B[i], _, _, _ = get_fit_parameter_values(bf_fitres_B[i][0].params)
+                if rv_options.fitting_profile == 'RotBF':
+                    vsini_A[i] = bf_fitres_A[i][0].params['vsini'].value
+                    vsini_B[i] = bf_fitres_B[i][0].params['vsini'].value
+                elif rv_options.fitting_profile == 'Gaussian':
+                    vsini_A[i] = bf_fitres_A[i][0].params['gaussian_sigma'].value
+                    vsini_B[i] = bf_fitres_B[i][0].params['gaussian_sigma'].value
+                else:
+                    raise ValueError('Unknown fitting profile selected.')
         if options.adjust_vsini is True:
             rv_options.vsini_A = np.mean(vsini_A)
             rv_options.vsini_B = np.mean(vsini_B)

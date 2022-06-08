@@ -1,6 +1,6 @@
 [project]
 name = 'sb2sep'
-version = '1.2.12'
+version = '1.2.14'
 description = "Separate Stellar Component Spectra in SB2 Binary System"
 authors = [{name = "Jeppe Sinkbaek Thomsen", email = "jeppest2@gmail.com"}]
 readme = "README.md"

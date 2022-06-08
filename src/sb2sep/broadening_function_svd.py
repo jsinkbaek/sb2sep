@@ -226,7 +226,7 @@ class BroadeningFunction:
         """
         Fits the broadening function with a rotational broadening profile by calling a fitting routine provided.
         The routine must include all essential parts of the fitting procedure.
-        :param ifitparams:          an object holding the initial fit parameters:
+        :param fitparams:          an object holding the initial fit parameters:
                vsini:               float, guess for the v sin(i) parameter
                limbd_coef:          float, a calculated limb darkening coefficient for the star.
                                          Default routine will not fit this parameter.
