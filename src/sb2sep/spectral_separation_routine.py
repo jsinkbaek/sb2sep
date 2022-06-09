@@ -846,13 +846,13 @@ def spectral_separation_routine(
     print('Spectral Separation: ')
     while True:
         print(f'\nIteration {iterations}.')
-        if flux_collection.ndim == 3:
+        if options.mode == 'orders':
             if RV_collection_A.ndim == 1:
                 RV_collection_A = RV_collection_A.reshape((1, RV_collection_A.size))
                 RV_collection_B = RV_collection_B.reshape((1, RV_collection_B.size))
                 RV_collection_A = np.repeat(RV_collection_A, axis=0, repeats=flux_collection[0, :, 0].size)
                 RV_collection_B = np.repeat(RV_collection_B, axis=0, repeats=flux_collection[0, :, 0].size)
-        if RV_collection_A.ndim == 2:
+        if options.mode == 'orders':
             rms_mask_A = np.zeros((RV_collection_A[0, :].size,), dtype=bool)
             rms_mask_B = np.zeros((RV_collection_B[0, :].size,), dtype=bool)
         else:
@@ -867,21 +867,21 @@ def spectral_separation_routine(
         if rv_options.evaluate_spectra_B is not None:
             rms_mask_B[rv_options.evaluate_spectra_B] = True
         elif sep_comp_options.rv_lower_limit == 0.0:
-            if RV_collection_A.ndim == 2:
+            if options.mode == 'orders':
                 rms_mask_B = np.abs(
                     np.mean(RV_collection_A, axis=0)-np.mean(RV_collection_B, axis=0)
                 ) > sep_comp_options.rv_proximity_limit
             else:
                 rms_mask_B = np.abs(RV_collection_A-RV_collection_B) > sep_comp_options.rv_proximity_limit
         else:
-            if RV_collection_A.ndim == 2:
+            if options.mode == 'orders':
                 rms_mask_B = np.abs(
                     np.mean(RV_collection_A, axis=0) - np.mean(RV_collection_B, axis=0)
                 ) > sep_comp_options.rv_lower_limit
             else:
                 rms_mask_B = np.abs(RV_collection_A) > sep_comp_options.rv_lower_limit
 
-        if RV_collection_A.ndim == 2:
+        if options.mode == 'orders':
             RMS_A, RMS_B = -np.mean(RV_collection_A, axis=0)[rms_mask_A], -np.mean(RV_collection_B, axis=0)[rms_mask_B]
         else:
             RMS_A, RMS_B = -RV_collection_A[rms_mask_A], -RV_collection_B[rms_mask_B]
@@ -901,7 +901,6 @@ def spectral_separation_routine(
             flux_templateB, buffer_mask, rv_options, f3_ax1, f4_ax1, time_values, period
         )
 
-
         if options.plot:
             _plot_ssr_iteration(
                 f1_ax1, f1_ax2, f1_ax3, separated_flux_A, separated_flux_B, wavelength, flux_templateA,
@@ -911,7 +910,7 @@ def spectral_separation_routine(
 
         # Average vsini values for future fit guess and limit allowed fit area
         vsini_A, vsini_B = np.empty(shape=bf_fitres_A.shape), np.empty(shape=bf_fitres_B.shape)
-        if vsini_A.ndim == 2:
+        if options.mode == 'orders':
             for i in range(0, vsini_A[0, :].size):
                 for j in range(0, vsini_A[:, 0].size):
                     if rv_options.fitting_profile == 'RotBF':
@@ -940,7 +939,7 @@ def spectral_separation_routine(
             print('vsini B: ', rv_options.vsini_B)
 
         iterations += 1
-        if RV_collection_A.ndim == 2:
+        if options.mode == 'orders':
             RMS_A += np.mean(RV_collection_A, axis=0)[rms_mask_A]
             RMS_B += np.mean(RV_collection_B, axis=0)[rms_mask_B]
             RMS_A = np.sqrt(np.sum(RMS_A**2)/np.mean(RV_collection_A, axis=0)[rms_mask_A].size)
@@ -962,16 +961,25 @@ def spectral_separation_routine(
             break
 
     if options.save_all_results is True:
-        save_separation_data(
-            options.save_path, wavelength[~buffer_mask], time_values, RV_collection_A,
-            RV_collection_B, RV_guess_collection, separated_flux_A[~buffer_mask], separated_flux_B[~buffer_mask],
-            bf_fitres_A, bf_fitres_B, flux_templateA[~buffer_mask], flux_templateB[~buffer_mask], options
-        )
+        if options.mode == 'merged':
+            save_separation_data(
+                options.save_path, wavelength[~buffer_mask], time_values, RV_collection_A,
+                RV_collection_B, RV_guess_collection, separated_flux_A[~buffer_mask], separated_flux_B[~buffer_mask],
+                bf_fitres_A, bf_fitres_B, flux_templateA[~buffer_mask], flux_templateB[~buffer_mask], options
+            )
+        elif options.mode == 'orders':
+            save_separation_data(
+                options.save_path, wavelength, time_values, RV_collection_A,
+                RV_collection_B, RV_guess_collection, separated_flux_A, separated_flux_B,
+                bf_fitres_A, bf_fitres_B, flux_templateA, flux_templateB, options
+            )
+        else:
+            raise ValueError('options.mode wrong.')
 
     if options.save_plot_path is not None:
         save_multi_image(options.save_plot_path)
 
-    if options.return_unbuffered:
+    if options.return_unbuffered and options.mode == 'merged':
         return RV_collection_A, RV_collection_B, separated_flux_A[~buffer_mask], separated_flux_B[~buffer_mask], \
                wavelength[~buffer_mask]
     else:
