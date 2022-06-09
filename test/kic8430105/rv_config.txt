@@ -3,11 +3,10 @@
 # Each non-empty line must include a parameter name followed by its value.
 # Trailing comments are allowed after this.
 
-mode merged             # Structure of the input data. If mode == 'merged', input spectra are assumed to be merged
-                        # and structured as an array flux_collection with shape (wl.size, n_spectra).
-                        # If mode == 'orders', flux_collection is expected to have shape (wl.size, n_orders, n_spectra).
-                        # RV will then be measured independently for all orders (while separated spectra will be
-                        # calculated from merged spectra and mean RVs).
+method BF           # Defines the RV method to use. Can be 'BF' for broadening function fitting against a
+                    # template (which then uses the 'fitting_profile' parameter to define the fit function).
+                    # Can also be 'Least-Squares' for LM/Least Squares fit of separated spectrum to observed spectrum
+                    # using parameters (RV, scale_factor).
 
 vsini_guess_A 4.0       # initial guess for rotational broadening function fit. Generally okay to leave as is.
 vsini_guess_B 4.0

@@ -40,6 +40,9 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
                 routine_options.filename_bulk = None
             else:
                 routine_options.filename_bulk = col1[index]
+        elif value == 'mode':
+            routine_options.mode = col1[index]
+            rv_options.mode = col1[index]
         else:
             raise KeyError(f'Routine options config file key {value} not supported.')
 
@@ -165,8 +168,6 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
                 rv_options.fitting_profile = col1[index]
             else:
                 raise ValueError("RV options: Unrecognised fitting profile selected. Either use 'RotBF' or 'Gaussian'.")
-        elif value == 'mode':
-            rv_options.mode = col1[index]
         else:
             raise KeyError(f'RV options config file key {value} not supported.')
     return routine_options, sep_options, rv_options
@@ -357,7 +358,8 @@ class RoutineOptions:
             filename_bulk=None,
             plot_order=0,
             adjust_vsini=True,
-            delta_v=1.0
+            delta_v=1.0,
+            mode='merged'
     ):
         self.convergence_limit = convergence_limit
         self.iteration_limit = iteration_limit
@@ -371,3 +373,4 @@ class RoutineOptions:
         self.plot_order = plot_order
         self.adjust_vsini = adjust_vsini
         self.delta_v = delta_v
+        self.mode = mode

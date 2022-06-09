@@ -329,8 +329,8 @@ def _calculate_overlap(mask_collection_orders):
     n_spectra = mask_collection_orders[0, 0, :].size
     for i in range(0, n_spectra):
         for j in range(0, n_orders):
-            other_masks = np.delete(mask_collection_orders[:, :, i], j, axis=1)
-            mask = mask_collection_orders[:, j, i]
+            other_masks = ~np.delete(mask_collection_orders[:, :, i], j, axis=1)
+            mask = ~mask_collection_orders[:, j, i]
             overlap_mask = np.zeros(mask.size, dtype=bool)
             for k in range(0, n_orders-1):
                 other_mask_temp = other_masks[:, k]
@@ -372,172 +372,6 @@ def _update_bf_plot(plot_ax, model, RV_actual, index, options: RadialVelocityOpt
                  color='grey')
 
 
-def recalculate_RVs(
-        flux_collection: np.ndarray, separated_flux_A: np.ndarray, separated_flux_B: np.ndarray,
-        RV_collection_A: np.ndarray, RV_collection_B: np.ndarray, flux_templateA: np.ndarray,
-        flux_templateB: np.ndarray, buffer_mask: np.ndarray, options: RadialVelocityOptions, get_fit_parameter_values,
-        plot_ax_A=None, plot_ax_B=None, time_values=None, period=None
-):
-    """
-    This part of the spectral separation routine corrects the spectra for the separated spectra found by
-    separate_component_spectra and recalculates RV values for each component using the corrected spectra (with one
-    component removed).
-
-    :param flux_collection: np.ndarray shape (:, n_spectra). Collection of normalized fluxes for the program spectra.
-    :param separated_flux_A:    np.ndarray shape (:, ). Meaned normalized flux from separate_component_spectra() for A.
-    :param separated_flux_B:    np.ndarray shape (:, ). Meaned normalized flux from separate_component_spectra() for B.
-    :param RV_collection_A:     np.ndarray shape (n_spectra, ). Current RV values used to remove A from spectrum with.
-    :param RV_collection_B:     np.ndarray shape (n_spectra, ). Current RV values used to remove B from spectrum with.
-    :param flux_templateA:  np.ndarray shape (:, ). Template spectrum normalized flux for component A.
-    :param flux_templateB:  np.ndarray shape (:, ). Template spectrum normalized flux for component B.
-    :param buffer_mask:         np.ndarray shape (:, ). Mask used to remove "buffer" (or "padding") from spectrum.
-                                    See spectral_separation_routine() for more info.
-    :param options:             fitting and broadening function options
-    :param plot_ax_A:           matplotlib.axes.axes. Used to update RV plots during iterations.
-    :param plot_ax_B:           matplotlib.axes.axes. Used to update RV plots during iterations.
-
-    :return:    RV_collection_A,        RV_collection_B, (fits_A, fits_B)
-                RV_collection_A:        updated values for the RV of component A.
-                RV_collection_B:        updated values for the RV of component B.
-                fits_A, fits_B:         np.ndarrays storing the rotational BF profile fits found for each spectrum.
-    """
-    RV_collection_A = deepcopy(RV_collection_A)
-    RV_collection_B = deepcopy(RV_collection_B)
-    n_spectra = flux_collection[0, :].size
-    v_span = options.bf_velocity_span
-    delta_v = options.delta_v
-
-    if plot_ax_A is not None:
-        plot_ax_A.clear()
-        plot_ax_A.set_xlim([-v_span/2, +v_span/2])
-        plot_ax_A.set_xlabel('Velocity shift [km/s]')
-    if plot_ax_B is not None:
-        plot_ax_B.clear()
-        plot_ax_B.set_xlim([-v_span/2, +v_span/2])
-        plot_ax_B.set_xlabel('Velocity shift [km/s]')
-
-    bf_fitres_A = np.empty(shape=(n_spectra,), dtype=tuple)
-    bf_fitres_B = np.empty(shape=(n_spectra,), dtype=tuple)
-
-    krange = 1
-
-    for i in range(0, n_spectra):
-        vary_continuum = True
-        continuum_A = 0.0
-        continuum_B = 0.0
-        if options.refit_width_A is not None or options.refit_width_B is not None:
-            krange = 2
-        else:
-            pass
-        for k in range(0, krange):       # perform "burn-in" with wide fit-width, and then refit only with peak data
-            if k == 0:
-                fit_width_A = copy(options.velocity_fit_width_A)
-                fit_width_B = copy(options.velocity_fit_width_B)
-            if k == 1:
-                options.velocity_fit_width_A = options.refit_width_A
-                options.velocity_fit_width_B = options.refit_width_B
-                vary_continuum = False
-                # resa = get_fit_parameter_values(model_A[0].params)
-                # resb = get_fit_parameter_values(model_B[0].params)
-                continuum_A = model_A[0].params['continuum_constant'].value
-                continuum_B = model_B[0].params['continuum_constant'].value
-
-            iterations = 0
-            while True:
-                iterations += 1
-
-                # # Calculate RV_A # #
-                corrected_flux_A = (1-flux_collection[:, i]) - \
-                                   shift_spectrum(1-separated_flux_B, RV_collection_B[i], delta_v)
-
-                if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
-                        corrected_flux_A = 1-flux_collection[:, i]
-
-                corrected_flux_A = corrected_flux_A[~buffer_mask]
-
-                # Generate fit parameter object
-                fitparams_A = FitParameters(
-                    options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
-                    options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
-                    options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0, continuum=continuum_A,
-                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile
-                )
-
-                # Perform calculation
-                template_shifted = shift_spectrum(flux_templateA, RV_collection_A[i], delta_v)
-                BRsvd_template_A = BroadeningFunction(  # observation flux is changed to corrected_flux_A later
-                    corrected_flux_A, 1 - template_shifted[~buffer_mask], v_span, delta_v
-                )
-                BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
-                RV_deviation_A, model_A = radial_velocity_single_component(
-                    corrected_flux_A, BRsvd_template_A, fitparams_A
-                )
-                RV_collection_A[i] = RV_collection_A[i] + RV_deviation_A
-
-                # # Calculate RV_B # #
-                corrected_flux_B = (1-flux_collection[:, i]) - \
-                                   shift_spectrum(1-separated_flux_A, RV_collection_A[i], delta_v)
-
-                if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
-                        corrected_flux_B = 1-flux_collection[:, i]
-
-                corrected_flux_B = corrected_flux_B[~buffer_mask]
-
-                fitparams_B = FitParameters(
-                    options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
-                    options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
-                    options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0, continuum=continuum_B,
-                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile
-                )
-                template_shifted = shift_spectrum(flux_templateB, RV_collection_B[i], delta_v)
-                BRsvd_template_B = BroadeningFunction(
-                    corrected_flux_B, 1 - template_shifted[~buffer_mask], v_span, delta_v
-                )
-                BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
-                RV_deviation_B, model_B = radial_velocity_single_component(
-                    corrected_flux_B, BRsvd_template_B, fitparams_B
-                )
-                RV_collection_B[i] = RV_collection_B[i] + RV_deviation_B
-                if options.verbose:
-                    print(
-                        f'RV dev spec {i}: {np.abs(RV_deviation_A):.{options.print_prec}f} (A) '
-                        f'{np.abs(RV_deviation_B):.{options.print_prec}f} (B)'
-                    )
-                if (np.abs(RV_deviation_A) < options.convergence_limit or i not in options.evaluate_spectra_A) and \
-                        (np.abs(RV_deviation_B) < options.convergence_limit or i not in options.evaluate_spectra_B):
-                    if options.verbose:
-                        print(f'RV: spectrum {i} successful.')
-                    break
-                elif iterations > options.iteration_limit:
-                    if k == 1 and options.verbose is True:
-                        warnings.warn(
-                            f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'
-                        )
-                    break
-
-        bf_fitres_A[i], bf_fitres_B[i] = model_A, model_B
-
-        rv_lower_limit = options.rv_lower_limit
-        if plot_ax_A is not None:
-            _update_bf_plot(plot_ax_A, model_A, RV_collection_A[i], i)
-            if rv_lower_limit != 0.0:
-                plot_ax_A.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-                plot_ax_A.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-        if plot_ax_B is not None:
-            _update_bf_plot(plot_ax_B, model_B, RV_collection_B[i], i)
-            if rv_lower_limit != 0.0:
-                plot_ax_B.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-                plot_ax_B.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-
-    if krange == 2:
-        options.velocity_fit_width_A = fit_width_A
-        options.velocity_fit_width_B = fit_width_B
-
-    return RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B)
-
-
 def recalculate_RVs_new(
         flux_collection: np.ndarray, separated_flux_A: np.ndarray, separated_flux_B: np.ndarray,
         RV_collection_A: np.ndarray, RV_collection_B: np.ndarray, flux_templateA: np.ndarray,
@@ -557,10 +391,11 @@ def recalculate_RVs_new(
             plot_ax_B.clear()
             plot_ax_B.set_xlim([-v_span / 2, +v_span / 2])
             plot_ax_B.set_xlabel('Velocity shift [km/s]')
-        if options.mode == 'orders':
-            pass
-        elif options.mode == 'merged':
-            pass
+        RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = _recalculate_RVs_BF(
+            flux_collection, separated_flux_A, separated_flux_B, RV_collection_A, RV_collection_B, flux_templateA,
+            flux_templateB, buffer_mask, options, plot_ax_A, plot_ax_B, time_values, period
+        )
+        return RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B)
     elif options.method == 'Least-Squares' and options.mode == 'orders':
         pass
     elif options.method == 'Least-Squares' and options.mode == 'merged':
@@ -577,7 +412,6 @@ def _recalculate_RVs_BF(
 ):
     if options.mode == 'merged':
         n_spectra = flux_collection[0, :].size
-        n_orders = 0
         bf_fitres_A = np.empty(shape=(n_spectra, ), dtype=tuple)
         bf_fitres_B = np.empty(shape=(n_spectra, ), dtype=tuple)
     elif options.mode == 'orders':
@@ -588,10 +422,7 @@ def _recalculate_RVs_BF(
     else:
         raise ValueError('rv_options.mode is wrong.')
 
-    v_span = options.bf_velocity_span
-    delta_v = options.delta_v
     krange = 1
-
     for i in range(0, n_spectra):
         vary_continuum = True
         continuum_A = 0.0
@@ -614,13 +445,22 @@ def _recalculate_RVs_BF(
             while True:
                 iterations += 1
                 if options.mode == 'orders':
+                    if k == 1:
+                        prev_fit_A = models_previous_A[:, i]
+                        prev_fit_B = models_previous_B[:, i]
+                    else:
+                        prev_fit_A = None
+                        prev_fit_B = None
                     res = _rv_orders_iteration(
-                        flux_collection, separated_flux_A, separated_flux_B, options, period, time_values, continuum_A,
-                        continuum_B, vary_continuum, buffer_mask, RV_collection_A, RV_collection_B, flux_templateA,
-                        flux_templateB, i, k
+                        flux_collection, separated_flux_A, separated_flux_B, options, period, time_values,
+                        vary_continuum, buffer_mask, RV_collection_A, RV_collection_B, flux_templateA,
+                        flux_templateB, prev_fit_A, prev_fit_B, i, k
                     )
                     RV_collection_A[:, i], RV_collection_B[:, i], bf_fitres_A[:, i], bf_fitres_B[:, i], break_bool = res
                 elif options.mode == 'merged':
+                    if k == 1:
+                        continuum_A = models_previous_A[i][0].params['continuum']
+                        continuum_B = models_previous_B[i][0].params['continuum']
                     res = _rv_merged_iteration(
                         flux_collection, separated_flux_A, separated_flux_B, options, period, time_values,
                         continuum_A, continuum_B, vary_continuum, buffer_mask, RV_collection_A, RV_collection_B,
@@ -640,6 +480,8 @@ def _recalculate_RVs_BF(
     if krange == 2:
         options.velocity_fit_width_A = fit_width_A
         options.velocity_fit_width_B = fit_width_B
+
+    return RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B)
 
 
 def _rv_merged_iteration(
@@ -684,9 +526,9 @@ def _rv_merged_iteration(
 
 
 def _rv_orders_iteration(
-        flux_collection_orders, separated_flux_A, separated_flux_B, options: RadialVelocityOptions, period, time_values, continuum_A,
-        continuum_B, vary_continuum, mask_orders, RV_collection_A, RV_collection_B, flux_templateA,
-        flux_templateB,
+        flux_collection_orders, separated_flux_A, separated_flux_B, options: RadialVelocityOptions, period, time_values,
+        vary_continuum, mask_orders, RV_collection_A, RV_collection_B, flux_templateA,
+        flux_templateB, previous_fit_A, previous_fit_B,
         i, k
 ):
     n_orders = flux_collection_orders[0, :, 0].size
@@ -699,6 +541,12 @@ def _rv_orders_iteration(
     model_B_coll = np.empty((n_orders, ), dtype=tuple)
 
     for j in range(0, n_orders):
+        if k == 1:
+            continuum_A = previous_fit_A[j][0].params['continuum']
+            continuum_B = previous_fit_B[j][0].params['continuum']
+        else:
+            continuum_A = 0.0
+            continuum_B = 0.0
         flux_current = flux_collection_orders[:, j, i]
         mask_current = mask_orders[:, j, i]
         RV_A_current = RV_collection_A[j, i]
@@ -788,281 +636,6 @@ def _perform_rv_recalc(
     rv_b = rv_b, + rv_deviation_B
 
     return (rv_a, rv_deviation_A, model_A), (rv_b, rv_deviation_B, model_B)
-
-
-def recalculate_RVs_orders(
-        flux_collection_orders, mask_collection_orders, separated_flux_A, separated_flux_B, RV_collection_orders_A,
-        RV_collection_orders_B, flux_templateA, flux_templateB, options: RadialVelocityOptions,
-        get_fit_parameter_values, plot_ax_A=None,
-        plot_ax_B=None, time_values=None, period=None, plot_order=0
-):
-    """
-    Assumes flux_order_collection.shape = [wavelength.size, n_orders, n_spectra], where wavelength.size is the amount of
-    elements in the equi-velocity-spaced interpolated wavelength grid for a merged spectrum.
-    Each individual order should have the same amount of elements, but values outside the range must be = 1
-    mask_collection_orders.shape = [wavelength.size, n_orders, n_spectra]. dtype=bool. Each mask must remove values
-    outside of order range
-    RV_collection_orders_X.shape = (n_orders, n_spectra)
-    """
-    RV_collection_orders_A = deepcopy(RV_collection_orders_A)
-    RV_collection_orders_B = deepcopy(RV_collection_orders_B)
-    n_spectra = flux_collection_orders[0, 0, :].size
-    n_orders = flux_collection_orders[0, :, 0].size
-    v_span = options.bf_velocity_span
-    delta_v = options.delta_v
-    krange = 1
-
-    bf_fitres_A = np.empty(shape=(n_orders, n_spectra), dtype=tuple)
-    bf_fitres_B = np.empty(shape=(n_orders, n_spectra), dtype=tuple)
-
-    if options.n_parallel_jobs > 1:
-        arguments = (
-            RV_collection_orders_A, RV_collection_orders_B, flux_collection_orders, separated_flux_A,
-            separated_flux_B, flux_templateA, flux_templateB, mask_collection_orders, delta_v, v_span, period,
-            time_values, n_orders, krange, bf_fitres_A, bf_fitres_B, options
-        )
-        res_par = Parallel(n_jobs=options.n_parallel_jobs)(
-            delayed(_rv_loop_orders)(*arguments, i) for i in range(0, n_spectra)
-        )
-        for i in range(0, n_spectra):
-            result_temp = res_par[i]
-            RV_collection_orders_A[:, i] = result_temp[0]
-            RV_collection_orders_B[:, i] = result_temp[1]
-            bf_fitres_A[:, i] = result_temp[2][0]
-            bf_fitres_B[:, i] = result_temp[2][1]
-
-            rv_lower_limit = options.rv_lower_limit
-            if plot_ax_A is not None:
-                _update_bf_plot(
-                    plot_ax_A, bf_fitres_A[0, i], RV_collection_orders_A[0, i], i
-                )
-                if rv_lower_limit != 0.0:
-                    plot_ax_A.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-                    plot_ax_A.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-            if plot_ax_B is not None:
-                _update_bf_plot(
-                    plot_ax_B, bf_fitres_B[0, i], RV_collection_orders_B[0, i], i
-                )
-                if rv_lower_limit != 0.0:
-                    plot_ax_B.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-                    plot_ax_B.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-
-    else:
-        for i in range(0, n_spectra):
-            if options.verbose:
-                print(f'RV: spectrum {i} begun.')
-            if options.refit_width_A is not None or options.refit_width_B is not None:
-                krange = 2
-            else:
-                pass
-            for k in range(0, krange):
-                if k == 0:
-                    fit_width_A = copy(options.velocity_fit_width_A)
-                    fit_width_B = copy(options.velocity_fit_width_B)
-                if k == 1:
-                    options.velocity_fit_width_A = options.refit_width_A
-                    options.velocity_fit_width_B = options.refit_width_B
-                iterations = 0
-                RV_deviation_A = np.ones((RV_collection_orders_A[:, 0].size,))
-                RV_deviation_B = np.ones((RV_collection_orders_B[:, 0].size,))
-                while True:
-                    iterations += 1
-                    for j in range(0, n_orders):
-                        # # Calculate RV_A # #
-                        corrected_flux_A = (1 - flux_collection_orders[:, j, i]) - \
-                                           (1 - shift_spectrum(separated_flux_B, RV_collection_orders_B[j, i], delta_v))
-                        if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                            if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
-                                corrected_flux_A = 1 - flux_collection_orders[:, j, i]
-                        corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
-                        fitparams_A = FitParameters(
-                            options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A,
-                            options.limbd_coef_A,
-                            options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
-                            options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0
-                        )
-                        template_shifted = shift_spectrum(  # shift template to reduce boundary issues
-                            flux_templateA, RV_collection_orders_A[j, i], delta_v
-                        )[mask_collection_orders[:, j, i]]
-                        BRsvd_template_A = BroadeningFunction(
-                            corrected_flux_A,
-                            1 - template_shifted,
-                            v_span, delta_v
-                        )
-                        BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
-                        rva_temp, bf_fitres_A[j, i] = radial_velocity_single_component(
-                            corrected_flux_A, BRsvd_template_A, fitparams_A
-                        )
-                        RV_deviation_A[j] = rva_temp
-                        RV_collection_orders_A[j, i] = rva_temp + RV_collection_orders_A[j, i]
-
-                        # # Calculate RV_B # #
-                        corrected_flux_B = (1 - flux_collection_orders[:, j, i]) - \
-                                           (1 - shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
-                        if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                            if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
-                                corrected_flux_B = 1 - flux_collection_orders[:, j, i]
-                        corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
-                        fitparams_B = FitParameters(
-                            options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B,
-                            options.limbd_coef_B,
-                            options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
-                            options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0
-                        )
-                        template_shifted = shift_spectrum(
-                            flux_templateB[mask_collection_orders[:, j, i]], RV_collection_orders_B[j, i], delta_v
-                        )
-                        BRsvd_template_B = BroadeningFunction(
-                            corrected_flux_B,
-                            1 - template_shifted, v_span, delta_v
-                        )
-                        BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
-                        rvb_temp, bf_fitres_B[j, i] = radial_velocity_single_component(
-                            corrected_flux_B, BRsvd_template_B, fitparams_B
-                        )
-                        RV_deviation_B[j] = rvb_temp
-                        RV_collection_orders_B[j, i] = rvb_temp + RV_collection_orders_B[j, i]
-                    if options.verbose:
-                        print(
-                            f'RV dev spec {i}: {np.abs(np.mean(RV_deviation_A)):.{options.print_prec}f} (A) '
-                            f'{np.abs(np.mean(RV_deviation_B)):.{options.print_prec}f} (B)'
-                        )
-                    if (np.abs(np.mean(RV_deviation_A)) < options.convergence_limit or i not in
-                        options.evaluate_spectrum_A) and (np.abs(np.mean(RV_deviation_B)) < options.convergence_limit
-                                                          or i not in options.evaluate_spectrum_B):
-                        if options.verbose:
-                            print(f'RV: spectrum {i} successful.')
-                        break
-                    elif iterations > options.iteration_limit:
-                        if k == 1 or (options.refit_width_B is None and options.refit_width_A is None):
-                            if options.verbose is True:
-                                warnings.warn(
-                                    f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'
-                                )
-                        break
-
-            rv_lower_limit = options.rv_lower_limit
-            if plot_ax_A is not None:
-                _update_bf_plot(plot_ax_A, bf_fitres_A[plot_order, i], RV_collection_orders_A[plot_order, i], i)
-                if rv_lower_limit != 0.0:
-                    plot_ax_A.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-                    plot_ax_A.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-            if plot_ax_B is not None:
-                _update_bf_plot(plot_ax_B, bf_fitres_B[plot_order, i], RV_collection_orders_B[plot_order, i], i)
-                if rv_lower_limit != 0.0:
-                    plot_ax_B.plot([rv_lower_limit, rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-                    plot_ax_B.plot([-rv_lower_limit, -rv_lower_limit], [0, 1.1], 'k', linewidth=0.3)
-
-    if krange == 2 and options.n_parallel_jobs == 1:
-        options.velocity_fit_width_A = fit_width_A
-        options.velocity_fit_width_B = fit_width_B
-
-    return RV_collection_orders_A, RV_collection_orders_B, (bf_fitres_A, bf_fitres_B)
-
-
-def _rv_loop_orders(
-        RV_collection_orders_A, RV_collection_orders_B, flux_collection_orders, separated_flux_A, separated_flux_B,
-        flux_templateA, flux_templateB, mask_collection_orders, delta_v, v_span, period, time_values, n_orders, krange,
-        bf_fitres_A, bf_fitres_B, options,
-        i
-):
-    # RV_collection_orders_A = np.copy(RV_collection_orders_A)
-    # RV_collection_orders_B = np.copy(RV_collection_orders_B)
-    # bf_fitres_A = np.copy(bf_fitres_A)
-    # bf_fitres_B = np.copy(bf_fitres_B)
-    options = deepcopy(options) # probably not needed
-    if options.verbose:
-        print(f'RV: spectrum {i} begun.')
-    if options.refit_width_A is not None or options.refit_width_B is not None:
-        krange = 2
-    else:
-        pass
-    for k in range(0, krange):
-        if k == 0:
-            fit_width_A = copy(options.velocity_fit_width_A)
-            fit_width_B = copy(options.velocity_fit_width_B)
-        if k == 1:
-            options.velocity_fit_width_A = options.refit_width_A
-            options.velocity_fit_width_B = options.refit_width_B
-        iterations = 0
-        RV_deviation_A = np.ones((RV_collection_orders_A[:, 0].size,))
-        RV_deviation_B = np.ones((RV_collection_orders_B[:, 0].size,))
-        while True:
-            iterations += 1
-            for j in range(0, n_orders):
-                # # Calculate RV_A # #
-                corrected_flux_A = (1 - flux_collection_orders[:, j, i]) - \
-                                   (1 - shift_spectrum(separated_flux_B, RV_collection_orders_B[j, i], delta_v))
-                if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
-                        corrected_flux_A = 1 - flux_collection_orders[:, j, i]
-                corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
-
-                fitparams_A = FitParameters(
-                    options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
-                    options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
-                    options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0
-                )
-                template_shifted = shift_spectrum(  # shift template to reduce boundary issues
-                    flux_templateA, RV_collection_orders_A[j, i], delta_v
-                )[mask_collection_orders[:, j, i]]
-                BRsvd_template_A = BroadeningFunction(
-                    corrected_flux_A,
-                    1 - template_shifted,
-                    v_span, delta_v
-                )
-                BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
-                rva_temp, bf_fitres_A[j, i] = radial_velocity_single_component(
-                    corrected_flux_A, BRsvd_template_A, fitparams_A
-                )
-                RV_deviation_A[j] = rva_temp
-                RV_collection_orders_A[j, i] = rva_temp + RV_collection_orders_A[j, i]
-
-                # # Calculate RV_B # #
-                corrected_flux_B = (1 - flux_collection_orders[:, j, i]) - \
-                                   (1 - shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
-                if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
-                        corrected_flux_B = 1 - flux_collection_orders[:, j, i]
-                corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
-                options.RV_B = RV_collection_orders_B[j, i]
-                fitparams_B = FitParameters(
-                    options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
-                    options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
-                    options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0
-                )
-                template_shifted = shift_spectrum(
-                    flux_templateB[mask_collection_orders[:, j, i]], RV_collection_orders_B[j, i], delta_v
-                )
-                BRsvd_template_B = BroadeningFunction(
-                    corrected_flux_B,
-                    1 - template_shifted, v_span, delta_v
-                )
-                BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
-                rvb_temp, bf_fitres_B[j, i] = radial_velocity_single_component(
-                    corrected_flux_B, BRsvd_template_B, fitparams_B
-                )
-                RV_deviation_B[j] = rvb_temp
-                RV_collection_orders_B[j, i] = rvb_temp + RV_collection_orders_B[j, i]
-            if options.verbose:
-                print(
-                    f'RV dev spec {i}: {np.abs(np.mean(RV_deviation_A)):.{options.print_prec}f} (A) '
-                    f'{np.abs(np.mean(RV_deviation_B)):.{options.print_prec}f} (B)'
-                )
-            if (np.abs(np.mean(RV_deviation_A)) < options.convergence_limit or i not in options.evaluate_spectrum_A) \
-                    and (np.abs(np.mean(RV_deviation_B)) < options.convergence_limit or i not in
-                         options.evaluate_spectrum_B):
-                if options.verbose:
-                    print(f'RV: spectrum {i} successful.')
-                break
-            elif iterations > options.iteration_limit:
-                if k == 1 or (options.refit_width_B is None and options.refit_width_A is None):
-                    if options.verbose is True:
-                        warnings.warn(
-                            f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'
-                        )
-                break
-    return RV_collection_orders_A[:, i], RV_collection_orders_B[:, i], (bf_fitres_A[:, i], bf_fitres_B[:, i])
 
 
 def _check_for_total_eclipse(time_value, period, eclipse_phase_area):
@@ -1162,7 +735,7 @@ def spectral_separation_routine(
         flux_collection: np.ndarray, flux_templateA: np.ndarray, flux_templateB: np.ndarray,
         wavelength: np.ndarray,
         options: RoutineOptions, sep_comp_options: SeparateComponentsOptions, rv_options: RadialVelocityOptions,
-        RV_guess_collection: np.ndarray, mask_collection_orders=None, time_values: np.ndarray = None,
+        RV_guess_collection: np.ndarray, time_values: np.ndarray = None,
         period: float = None, buffer_mask: np.ndarray = None, outside_separated_A=None, outside_separated_B=None,
         weights_outside_A=None, weights_outside_B=None
 ):
@@ -1250,8 +823,8 @@ def spectral_separation_routine(
     else:
         f1_ax1 = None; f1_ax2 = None; f1_ax3 = None; f3_ax1 = None; f4_ax1 = None
 
-    if flux_collection.ndim == 3:
-        overlap_weights = _calculate_overlap(mask_collection_orders)
+    if options.mode == 'orders':
+        overlap_weights = _calculate_overlap(buffer_mask)
 
     if rv_options.evaluate_spectra_A is None:
         if RV_collection_A.ndim == 1:
@@ -1313,7 +886,7 @@ def spectral_separation_routine(
         else:
             RMS_A, RMS_B = -RV_collection_A[rms_mask_A], -RV_collection_B[rms_mask_B]
 
-        if flux_collection.ndim == 3:
+        if options.mode == 'orders':
             separated_flux_A, separated_flux_B = separate_component_spectra_orders(
                 flux_collection, RV_collection_A, RV_collection_B, sep_comp_options, overlap_weights
             )
@@ -1323,19 +896,11 @@ def spectral_separation_routine(
                 outside_separated_B, weights_outside_A, weights_outside_B
             )
 
-        if flux_collection.ndim == 3:
-            RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs_orders(
-                flux_collection, mask_collection_orders, separated_flux_A, separated_flux_B, RV_collection_A,
-                RV_collection_B, flux_templateA, flux_templateB, rv_options, get_fit_parameter_values,
-                plot_ax_A=f3_ax1, plot_ax_B=f4_ax1,
-                time_values=time_values, period=period, plot_order=options.plot_order
-            )
-        else:
-            RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs(
-                flux_collection, separated_flux_A, separated_flux_B, RV_collection_A, RV_collection_B,
-                flux_templateA, flux_templateB, buffer_mask, rv_options, get_fit_parameter_values, plot_ax_A=f3_ax1,
-                plot_ax_B=f4_ax1, time_values=time_values, period=period
-            )
+        RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs_new(
+            flux_collection, separated_flux_A, separated_flux_B, RV_collection_A, RV_collection_B, flux_templateA,
+            flux_templateB, buffer_mask, rv_options, f3_ax1, f4_ax1, time_values, period
+        )
+
 
         if options.plot:
             _plot_ssr_iteration(
