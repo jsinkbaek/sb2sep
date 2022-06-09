@@ -737,7 +737,7 @@ def spectral_separation_routine(
         options: RoutineOptions, sep_comp_options: SeparateComponentsOptions, rv_options: RadialVelocityOptions,
         RV_guess_collection: np.ndarray, time_values: np.ndarray = None,
         period: float = None, buffer_mask: np.ndarray = None, outside_separated_A=None, outside_separated_B=None,
-        weights_outside_A=None, weights_outside_B=None
+        weights_outside_A=None, weights_outside_B=None, order_masks=None
 ):
     """
     Routine that separates component spectra and calculates radial velocities by iteratively calling
@@ -794,12 +794,6 @@ def spectral_separation_routine(
                 separated_flux_A.size = flux_templateA[buffer_mask].size. Same for the returned wavelength.
                 This can be disabled by setting return_unbuffered=False in the options object.
     """
-    if rv_options.fitting_profile == 'RotBF':
-        from .rotational_broadening_function_fitting import get_fit_parameter_values
-    elif rv_options.fitting_profile == 'Gaussian':
-        from .gaussian_fitting import get_fit_parameter_values
-    else:
-        raise ValueError('Unrecognised fitting routine.')
 
     if RV_guess_collection.ndim == 2:
         RV_collection_A, RV_collection_B = np.copy(RV_guess_collection[:, 0]), np.copy(RV_guess_collection[:, 1])
@@ -813,6 +807,14 @@ def spectral_separation_routine(
     iteration_limit = options.iteration_limit
     sep_comp_options.delta_v = options.delta_v
     rv_options.delta_v = options.delta_v
+
+    if options.mode == 'orders' and order_masks is not None:
+        buffer_mask = ~order_masks
+    elif buffer_mask is None and options.mode == 'orders':
+        raise ValueError("A mask array for all orders must be supplied using either the 'buffer_mask' or 'order_masks'"
+                         " parameter.")
+    else:
+        pass
 
     if buffer_mask is None:
         buffer_mask = np.zeros(wavelength.shape, dtype=bool)
@@ -888,7 +890,8 @@ def spectral_separation_routine(
 
         if options.mode == 'orders':
             separated_flux_A, separated_flux_B = separate_component_spectra_orders(
-                flux_collection, RV_collection_A, RV_collection_B, sep_comp_options, overlap_weights
+                flux_collection, np.mean(RV_collection_A, axis=0), np.mean(RV_collection_B, axis=0),
+                sep_comp_options, overlap_weights
             )
         else:
             separated_flux_A, separated_flux_B = separate_component_spectra(
