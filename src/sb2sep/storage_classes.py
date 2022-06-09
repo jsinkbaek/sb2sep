@@ -5,6 +5,9 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
     # Load routine config
     col0, col1 = np.genfromtxt(loc_routine_file, dtype=str, usecols=(0, 1), unpack=True)
     routine_options = RoutineOptions()
+    sep_options = SeparateComponentsOptions()
+    rv_options = RadialVelocityOptions()
+
     for index, value in enumerate(col0):
         if value == 'convergence_limit':
             routine_options.convergence_limit = float(col1[index])
@@ -27,6 +30,7 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
             routine_options.return_unbuffered = col1[index] == 'True'
         elif value == 'plot_order':
             routine_options.plot_order = int(col1[index])
+            rv_options.plot_order = int(col1[index])
         elif value == 'adjust_vsini':
             routine_options.adjust_vsini = col1[index] == 'True'
         elif value == 'delta_v':
@@ -41,7 +45,6 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
 
     # Load separated spectra subroutine config file
     col0, col1 = np.loadtxt(loc_separation_file, dtype=str, usecols=(0, 1), unpack=True)
-    sep_options = SeparateComponentsOptions()
     for index, value in enumerate(col0):
         if value == 'delta_v':
             sep_options.delta_v = float(col1[index])
@@ -78,7 +81,6 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
 
     # Load RV subroutine config
     col0, col1 = np.loadtxt(loc_rv_file, dtype=str, usecols=(0, 1), unpack=True)
-    rv_options = RadialVelocityOptions()
     for index, value in enumerate(col0):
         if value == 'vsini_guess_A':
             rv_options.vsini_A = float(col1[index])
@@ -163,6 +165,8 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
                 rv_options.fitting_profile = col1[index]
             else:
                 raise ValueError("RV options: Unrecognised fitting profile selected. Either use 'RotBF' or 'Gaussian'.")
+        elif value == 'mode':
+            rv_options.mode = col1[index]
         else:
             raise KeyError(f'RV options config file key {value} not supported.')
     return routine_options, sep_options, rv_options
@@ -245,7 +249,9 @@ class RadialVelocityOptions:
             n_parallel_jobs=1,
             evaluate_spectra_A=None,
             evaluate_spectra_B=None,
-            fitting_profile='RotBF'
+            fitting_profile='RotBF',
+            plot_order=0,
+            mode='merged'
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini_A = vsini_guess_A
@@ -306,6 +312,9 @@ class RadialVelocityOptions:
         self.evaluate_spectra_B = evaluate_spectra_B
 
         self.fitting_profile = fitting_profile
+
+        self.plot_order = plot_order
+        self.mode = mode
 
 
 class SeparateComponentsOptions:
