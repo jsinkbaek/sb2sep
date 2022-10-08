@@ -333,17 +333,25 @@ def updateline(handle, orig):
     handle.set_markersize(12)
 
 
-def simple_normalizer(wavelength, flux, reduce_em_lines=True, plot=False):
+def simple_normalizer(
+        wavelength, flux, poly1deg=3, poly2deg=4, replace_negative=0.0, replace_non_finite=1.0,
+        reduce_em_lines=True, plot=False, return_em_mask=False
+):
     matplotlib.rcParams.update({'font.size': 20})
     filtered_flux = moving_median_filter(flux, flux.size//25)
 
     selection_mask_1 = flux/filtered_flux > 0.85
-    polynomial_1 = Polynomial.fit(wavelength[selection_mask_1], flux[selection_mask_1], deg=3)
+    polynomial_1 = Polynomial.fit(wavelength[selection_mask_1], flux[selection_mask_1], deg=poly1deg)
 
     selection_mask_2 = (flux/polynomial_1(wavelength) > 0.95) & (flux/polynomial_1(wavelength) < 1.1)
-    polynomial_2 = Polynomial.fit(wavelength[selection_mask_2], flux[selection_mask_2], deg=4)
+    polynomial_2 = Polynomial.fit(wavelength[selection_mask_2], flux[selection_mask_2], deg=poly2deg)
 
     normalized_flux = flux / polynomial_2(wavelength)
+
+    if replace_negative:
+        normalized_flux[normalized_flux <= 0] = replace_negative
+    if replace_non_finite:
+        normalized_flux[~np.isfinite(normalized_flux)] = replace_non_finite
 
     if reduce_em_lines:
         std = np.std(normalized_flux[selection_mask_1])
@@ -381,6 +389,8 @@ def simple_normalizer(wavelength, flux, reduce_em_lines=True, plot=False):
         plt.show(block=True)
 
     if reduce_em_lines:
+        if return_em_mask:
+            return wavelength[selection_mask_3], normalized_flux[selection_mask_3], selection_mask_3
         return wavelength[selection_mask_3], normalized_flux[selection_mask_3]
     else:
         return wavelength, normalized_flux

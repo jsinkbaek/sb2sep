@@ -8,6 +8,7 @@ from barycorrpy import get_BC_vel, utc_tdb
 import scipy.constants as scc
 import matplotlib.pyplot as plt
 import matplotlib
+from PyAstronomy.pyasl.asl.rotBroad import rotBroad
 
 try:
     from src.sb2sep import spectrum_processing_functions as spf
@@ -36,34 +37,35 @@ data_path = 'Data/'
 observatory_location = EarthLocation.of_site("lapalma")
 observatory_name = "lapalma"
 stellar_target = "kic8430105"
-wavelength_normalization_limit = (4450, 7000)   # Ångström, limit to data before performing continuum normalization
-wavelength_RV_limit = (4450, 7000)              # Ångström, the area used after normalization
-wavelength_buffer_size = 25                     # Ångström, padding included at ends of spectra. Useful when doing
+wavelength_normalization_limit = (4000, 7000)   # Ångström, limit to data before performing continuum normalization
+wavelength_RV_limit = (4000, 7000)              # Ångström, the area used after normalization
+wavelength_buffer_size = 3.0                     # Ångström, padding included at ends of spectra. Useful when doing
                                                 # wavelength shifts with np.roll()
-wavelength_intervals_full = [(4500, 5825)]      # Ångström, the actual interval used.
+wavelength_intervals_full = [(4000, 5825)]      # Ångström, the actual interval used.
 wavelength_intervals = [                        # Intervals used for error calculation
-    (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250), (6575, 6840)
+    (4000, 4265), (4265, 4500), (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250),
+    (6575, 6840)
 ]
 
 
 file_exclude_list = []
-use_for_spectral_separation_A = [       # converted to index values during file load later (spectral_separation_array_A)
-    'FIDi080098_step011_merge.fits', 'FIDi090065_step011_merge.fits',
-    'FIBj150080_step011_merge.fits', 'FIDi130112_step011_merge.fits', 'FIBk030043_step011_merge.fits',
-    'FIBk050063_step011_merge.fits',
-    'FIBk140069_step011_merge.fits', 'FIDh160100_step011_merge.fits',
-    'FIBi230047_step011_merge.fits', 'FIBi240080_step011_merge.fits', "FIEh020092_step012_merge.fits"
-    ]
+# use_for_spectral_separation_A = [       # converted to index values during file load later (spectral_separation_array_A)
+#     'FIDi080098_step011_merge.fits', 'FIDi090065_step011_merge.fits',
+#     'FIBj150080_step011_merge.fits', 'FIDi130112_step011_merge.fits', 'FIBk030043_step011_merge.fits',
+#     'FIBk050063_step011_merge.fits',
+#     'FIBk140069_step011_merge.fits', 'FIDh160100_step011_merge.fits',
+#     'FIBi230047_step011_merge.fits', 'FIBi240080_step011_merge.fits', "FIEh020092_step012_merge.fits"
+#     ]
 # not used: 'FIBk230070_step011_merge.fits', 'FIBk060011_step011_merge.fits',
-use_for_spectral_separation_B = [
-    'FIDi080098_step011_merge.fits', 'FIDi090065_step011_merge.fits',
-    'FIBj150080_step011_merge.fits', 'FIDi130112_step011_merge.fits', 'FIBk030043_step011_merge.fits',
-    'FIBk050063_step011_merge.fits',
-    'FIBk140069_step011_merge.fits', 'FIDh160100_step011_merge.fits',
-    'FIBi230047_step011_merge.fits', 'FIBi240080_step011_merge.fits', "FIEh020092_step012_merge.fits"
-    ]
+# use_for_spectral_separation_B = [
+#     'FIDi080098_step011_merge.fits', 'FIDi090065_step011_merge.fits',
+#     'FIBj150080_step011_merge.fits', 'FIDi130112_step011_merge.fits', 'FIBk030043_step011_merge.fits',
+#     'FIBk050063_step011_merge.fits',
+#     'FIBk140069_step011_merge.fits', 'FIDh160100_step011_merge.fits',
+#     'FIBi230047_step011_merge.fits', 'FIBi240080_step011_merge.fits', "FIEh020092_step012_merge.fits"
+#    ]
 
-delta_v = 1.0          # interpolation resolution for spectrum in km/s
+delta_v = 1.0         # interpolation sampling resolution for spectrum in km/s
 
 mass_A_estimate = 1.31  # both used to estimate RV_B
 mass_B_estimate = 0.83
@@ -72,37 +74,38 @@ system_RV_estimate = 12.61          # to subtract before routine
 orbital_period_estimate = 63.327     # for ignoring component B during eclipse
 
 # # Initial fit parameters for rotational broadening function fit # #
-bf_velocity_span = 150        # broadening function span in velocity space
-limbd_A = 0.68          # estimate_linear_limbd(wavelength_RV_limit, logg_A, Teff_A, MH_A, mTur_A, loc='Data/tables/atlasco.dat')
-limbd_B = 0.68          # estimate_linear_limbd(wavelength_RV_limit, logg_B, Teff_B, MH_B, mTur_B, loc='Data/tables/atlasco.dat')
+limbd_A = estimate_linear_limbd(wavelength_RV_limit, 2.8, 4990, -0.45, 0.9, loc='Data/tables/atlasco.dat')
+limbd_B = estimate_linear_limbd(wavelength_RV_limit, 4.5, 5700, -0.45, 2.0, loc='Data/tables/atlasco.dat')
 
 # # Template Spectra # #
 template_spectrum_path_A = 'Data/template_spectra/5000_30_m05p00.ms.fits'
 template_spectrum_path_B = 'Data/template_spectra/5500_45_m05p00.ms.fits'
 
+load_previous = True
+
 # # Generate rv_options # #
-rv_options = RadialVelocityOptions(
-    vsini_guess_A=4.0, vsini_guess_B=4.0,
-    delta_v=delta_v, spectral_resolution=67000,
-    velocity_fit_width_A=60, velocity_fit_width_B=20,
-    limbd_coef_A=limbd_A, limbd_coef_B=limbd_B,
-    refit_width_A=10.0, refit_width_B=8.0,
-    smooth_sigma_A=2.0, smooth_sigma_B=4.0,
-    bf_velocity_span=bf_velocity_span,
-    ignore_at_phase_B=(0.98, 0.02),
-    iteration_limit=6, convergence_limit=5e-3
-)
+# rv_options = RadialVelocityOptions(
+#     vsini_guess_A=4.0, vsini_guess_B=4.0,
+#     delta_v=delta_v, spectral_resolution=67000,
+#     velocity_fit_width_A=60, velocity_fit_width_B=20,
+#     limbd_coef_A=limbd_A, limbd_coef_B=limbd_B,
+#     refit_width_A=10.0, refit_width_B=8.0,
+#     smooth_sigma_A=2.0, smooth_sigma_B=4.0,
+#     bf_velocity_span=bf_velocity_span,
+#     ignore_at_phase_B=(0.98, 0.02),
+#     iteration_limit=6, convergence_limit=5e-3
+# )
 # # Generate component spectrum calculation options
-sep_comp_options = SeparateComponentsOptions(
-    delta_v=delta_v, convergence_limit=1e-2, max_iterations=10,
-    use_for_spectral_separation_A=None,     # re-defined after loading all the observed spectra below
-    use_for_spectral_separation_B=None      # same
-)
+# sep_comp_options = SeparateComponentsOptions(
+#     delta_v=delta_v, convergence_limit=1e-2, max_iterations=10,
+#     use_for_spectral_separation_A=None,     # re-defined after loading all the observed spectra below
+#     use_for_spectral_separation_B=None      # same
+# )
 # # Generate spectral separation routine options
-routine_options = RoutineOptions(
-    convergence_limit=1E-5, iteration_limit=2,
-    plot=True, return_unbuffered=True, save_path='results/', save_all_results=True
-)
+# routine_options = RoutineOptions(
+#     convergence_limit=1E-5, iteration_limit=2,
+#    plot=True, return_unbuffered=True, save_path='results/', save_all_results=True
+# )
 # # Alternative generation of options objects above through configuration files:
 routine_options, sep_comp_options, rv_options = load_configuration_files(
     'routine_config.txt', 'sep_config.txt', 'rv_config.txt'
@@ -142,24 +145,32 @@ for filename in os.listdir(data_path):
         wavelength = wavelength[selection_mask]
 
         # Performs continuum fit and reduces emission lines (by removing above 2.5 std from fitted continuum)
-        wavelength, flux = spf.simple_normalizer(wavelength, flux, reduce_em_lines=True, plot=False)
+        if load_previous is False:
+            wavelength, flux = spf.simple_normalizer(
+                wavelength, flux, reduce_em_lines=True, plot=False, poly1deg=5, poly2deg=6
+            )
+            np.save(f'temp/wavelength_{i}.npy', wavelength)
+            np.save(f'temp/flux_{i}.npy', flux)
+        else:
+            wavelength = np.load(f'temp/wavelength_{i}.npy')
+            flux = np.load(f'temp/flux_{i}.npy')
 
         # Designate if spectrum should be used for spectral separation
-        if filename in use_for_spectral_separation_A:
-            spectral_separation_array_A = np.append(spectral_separation_array_A, i)
-        if filename in use_for_spectral_separation_B:
-            spectral_separation_array_B = np.append(spectral_separation_array_B, i)
+        # if filename in use_for_spectral_separation_A:
+        #    spectral_separation_array_A = np.append(spectral_separation_array_A, i)
+        #if filename in use_for_spectral_separation_B:
+        #    spectral_separation_array_B = np.append(spectral_separation_array_B, i)
 
         # Append to collection
         wavelength_collection_list.append(wavelength)
         flux_collection_list.append(flux)
         i += 1
 
-sep_comp_options.use_for_spectral_separation_A = spectral_separation_array_A        # see notes earlier
-sep_comp_options.use_for_spectral_separation_B = spectral_separation_array_B
+# sep_comp_options.use_for_spectral_separation_A = spectral_separation_array_A        # see notes earlier
+# sep_comp_options.use_for_spectral_separation_B = spectral_separation_array_B
 
-print(spectral_separation_array_A)
-print(spectral_separation_array_B)
+print(sep_comp_options.use_for_spectral_separation_A)
+print(sep_comp_options.use_for_spectral_separation_B)
 # # Verify RA and DEC # #
 RA, DEC = RA_array[0], DEC_array[0]
 
@@ -181,6 +192,16 @@ wavelength_template_A, flux_template_A = spf.load_template_spectrum(template_spe
 flux_template_A = flux_template_A[0, :]     # continuum normalized spectrum only
 wavelength_template_B, flux_template_B = spf.load_template_spectrum(template_spectrum_path_B)
 flux_template_B = flux_template_B[0, :]
+
+# # Limit templates
+mask = (wavelength_template_A > wavelength_RV_limit[0]-100) & (wavelength_template_A < wavelength_RV_limit[1]+100)
+wavelength_template_A, flux_template_A = wavelength_template_A[mask], flux_template_A[mask]
+mask = (wavelength_template_B > wavelength_RV_limit[0]-100) & (wavelength_template_B < wavelength_RV_limit[1]+100)
+wavelength_template_B, flux_template_B = wavelength_template_B[mask], flux_template_B[mask]
+
+# # Broaden templates
+flux_template_A = rotBroad(wavelength_template_A, flux_template_A, 0.0, 1.5)
+flux_template_B = rotBroad(wavelength_template_B, flux_template_B, 0.0, 1.5)
 
 # # Resample to same wavelength grid, equi-spaced in velocity space # #
 wavelength, (flux_collection, flux_template_A, flux_template_B) = spf.resample_multiple_spectra(
@@ -210,15 +231,20 @@ wavelength, flux_unbuffered_list, wavelength_buffered, flux_buffered_list, buffe
     flux_buffered_list
 
 # # Calculate broadening function RVs to use as initial guesses # #
-RV_guesses_A, _ = cRV.radial_velocities_of_multiple_spectra(
-    1-flux_collection, flux_template_A, rv_options, number_of_parallel_jobs=4,
-    plot=False, fit_two_components=False
-)
-RV_guess_collection = np.empty((RV_guesses_A.size, 2))
-RV_guess_collection[:, 0] = RV_guesses_A
-RV_guesses_B = -RV_guesses_A * (mass_A_estimate / mass_B_estimate)
+#RV_guesses_A, _ = cRV.radial_velocities_of_multiple_spectra(
+#    1-flux_collection, flux_template_A, rv_options, number_of_parallel_jobs=4,
+#    plot=False, fit_two_components=False
+#)
+RV_guess_collection = np.empty((len(wavelength_collection_list), 2))
+# RV_guess_collection[:, 0] = RV_guesses_A
+# RV_guesses_B = -RV_guesses_A * (mass_A_estimate / mass_B_estimate)
 
-RV_guess_collection[:, 1] = RV_guesses_B
+# RV_guess_collection[:, 1] = RV_guesses_B
+
+model = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/Binary_Analysis/JKTEBOP/NOT/kepler_pdcsap/model.out')
+phase = np.mod(bjdtdb-2454998.2336069366, orbital_period_estimate, dtype=np.float64)/orbital_period_estimate
+RV_guess_collection[:, 0] = np.interp(phase, model[:, 0], model[:, 6])-system_RV_estimate
+RV_guess_collection[:, 1] = np.interp(phase, model[:, 0], model[:, 7])-system_RV_estimate
 
 
 ########################### SEPARATION ROUTINE CALLS #################################
@@ -231,7 +257,7 @@ interval_results = ssr.spectral_separation_routine_multiple_intervals(
     routine_options, sep_comp_options, rv_options,
     wavelength_buffer_size, time_values=bjdtdb-(2400000+54976.6348), period=orbital_period_estimate
 )
-
+plt.show(block=True)
 # # # Calculate error # # #
 interval_results = ssr.spectral_separation_routine_multiple_intervals(
      wavelength_buffered, wavelength_intervals, flux_collection_buffered,

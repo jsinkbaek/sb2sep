@@ -3,7 +3,7 @@
 # Each non-empty line must include a parameter name followed by its value.
 # Trailing comments are allowed after this.
 
-convergence_limit 1E-2	# Convergence criteria for changes induced in the separated component spectra
+convergence_limit 1E-8	# Convergence criteria for changes induced in the separated component spectra
 			# between subroutine iterations.
 
 max_iterations 10	# Maximum allowed iterations for this subroutine.
@@ -15,14 +15,14 @@ rv_proximity_limit 0.0	# If not 0.0, can be used to exclude spectra from calcula
 rv_lower_limit 0.0	# If not 0.0, used to exclude spectra from calculation if absolute value of RV of component A
 			# is below this. Ignored if use_for_spectral_separation_A and B are supplied. Recommended value: 0.0
 
-use_for_spectral_separation_A None      # List or None
+use_for_spectral_separation_A [12,1,4,2,9,21,19,3,6,5,17,13,16,7,11]      # List or None
             # NO WHITESPACE ALLOWED IN ABOVE LIST.
             # List of integers indicating the indices of spectra to
 		    # use when calculating separated spectrum for component A.
 		    # If 5 out of 21 spectra are used for this, this list should have
 		    # length 5. Example: [0,2,6,11,15].
 		    # This is the recommended way to include/exclude spectra.
-use_for_spectral_separation_B None
+use_for_spectral_separation_B [12,1,4,2,9,21,19,3,6,17,13,16,7,11]
             # NO WHITESPACE ALLOWED IN ABOVE LIST.
 		    # same, but for calculation of component B separated spectrum.
 
