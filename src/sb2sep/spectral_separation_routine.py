@@ -405,11 +405,11 @@ def recalculate_RVs(
 
     if plot_ax_A is not None:
         plot_ax_A.clear()
-        plot_ax_A.set_xlim([-v_span/2, +v_span/2])
+        plot_ax_A.set_xlim([-v_span, +v_span])
         plot_ax_A.set_xlabel('Velocity shift [km/s]')
     if plot_ax_B is not None:
         plot_ax_B.clear()
-        plot_ax_B.set_xlim([-v_span/2, +v_span/2])
+        plot_ax_B.set_xlim([-v_span, +v_span])
         plot_ax_B.set_xlabel('Velocity shift [km/s]')
 
     bf_fitres_A = np.empty(shape=(n_spectra,), dtype=tuple)

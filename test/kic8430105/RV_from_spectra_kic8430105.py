@@ -39,9 +39,9 @@ observatory_name = "lapalma"
 stellar_target = "kic8430105"
 wavelength_normalization_limit = (4000, 7000)   # Ångström, limit to data before performing continuum normalization
 wavelength_RV_limit = (4000, 7000)              # Ångström, the area used after normalization
-wavelength_buffer_size = 3.0                     # Ångström, padding included at ends of spectra. Useful when doing
+wavelength_buffer_size = 4.0                     # Ångström, padding included at ends of spectra. Useful when doing
                                                 # wavelength shifts with np.roll()
-wavelength_intervals_full = [(4000, 5825)]      # Ångström, the actual interval used.
+wavelength_intervals_full = [(4000, 5800)]      # Ångström, the actual interval used.
 wavelength_intervals = [                        # Intervals used for error calculation
     (4000, 4265), (4265, 4500), (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250),
     (6575, 6840)
@@ -200,8 +200,16 @@ mask = (wavelength_template_B > wavelength_RV_limit[0]-100) & (wavelength_templa
 wavelength_template_B, flux_template_B = wavelength_template_B[mask], flux_template_B[mask]
 
 # # Broaden templates
-flux_template_A = rotBroad(wavelength_template_A, flux_template_A, 0.0, 1.5)
-flux_template_B = rotBroad(wavelength_template_B, flux_template_B, 0.0, 1.5)
+load_broadened = True
+if not load_broadened:
+    flux_template_A = rotBroad(wavelength_template_A, flux_template_A, 0.0, 1.5)
+    flux_template_B = rotBroad(wavelength_template_B, flux_template_B, 0.0, 1.5)
+    np.save('flux_template_A_temp.npy', flux_template_A)
+    np.save('flux_template_B_temp.npy', flux_template_B)
+else:
+    # flux_template_A = np.load('flux_template_A_temp.npy')
+    # flux_template_B = np.load('flux_template_B_temp.npy')
+    pass
 
 # # Resample to same wavelength grid, equi-spaced in velocity space # #
 wavelength, (flux_collection, flux_template_A, flux_template_B) = spf.resample_multiple_spectra(
