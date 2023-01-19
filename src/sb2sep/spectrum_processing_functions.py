@@ -10,6 +10,7 @@ from numpy.polynomial import Polynomial
 from matplotlib.collections import PathCollection
 from matplotlib.legend_handler import HandlerPathCollection, HandlerLine2D
 import matplotlib
+from scipy.ndimage import maximum_filter
 
 
 def load_template_spectrum(template_spectrum_path: str):
@@ -19,6 +20,21 @@ def load_template_spectrum(template_spectrum_path: str):
         wl0, delta_wl, naxis = hdr['CRVAL1'], hdr['CDELT1'], hdr['NAXIS1']
     wavelength = np.linspace(wl0, wl0+delta_wl*naxis, naxis)
     return wavelength, flux
+
+
+def load_phoenix_template(template_spectrum_path: str, wave_ref_path: str):
+    with fits.open(template_spectrum_path) as hdul:
+        flux = hdul[0].data
+    with fits.open(wave_ref_path) as hdul:
+        wavelength = hdul[0].data
+    size = int(wavelength.size / 10000)
+    continuum = maximum_filter(flux, size=size)
+    norm_flux = flux / continuum
+    plt.figure()
+    plt.plot(wavelength, norm_flux)
+    plt.xlim([3000, 9000])
+    plt.show(block=True)
+    return wavelength, flux, norm_flux
 
 
 def load_program_spectrum(program_spectrum_path: str):

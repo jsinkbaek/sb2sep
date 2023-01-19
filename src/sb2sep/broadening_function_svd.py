@@ -86,47 +86,6 @@ class SingularValueDecomposition:
         plt.show()
 
 
-class WeightedSingularValueDecomposition:
-    def __init__(self, template_spectrum: np.ndarray, span: int, weights_columns):
-        """
-        Creates a Singular Value Decomposition of a template spectrum DesignMatrix for the SVD broadening function.
-
-        :param template_spectrum: np.ndarray, inverted flux of the template spectrum equi-spaced in velocity space
-        :param span:              int, span or width (number of elements) of the broadening function design matrix.
-
-        :var self.design_matrix: The created DesignMatrix of the template spectrum.
-        :var self.u:             np.ndarray, the unitary matrix having left singular vectors as columns.
-                                 Shape (span, span)
-        :var self.w:             np.ndarray, vector of the singular values, in non-increasing order.
-                                 Shape (template_spectrum.size, )
-        :var self.vH:            np.ndarray, the unitary matrix having right singular vectors as rows.
-                                 Shape (span, template_spectrum.size)
-        """
-        weighted_design_matrix = DesignMatrix(template_spectrum, span, weights_columns)
-        self.design_matrix = DesignMatrix(template_spectrum, span)
-        P, S, QT = lg.svd(weighted_design_matrix, compute_uv=True, full_matrices=False)
-        self.u = P
-        self.vH = self.calculate_v(QT.T, weights_columns, span).T
-
-        self.w = S
-
-    def plot_w(self):
-        plt.figure()
-        plt.plot(self.w)
-        plt.yscale('log')
-        plt.show()
-
-    def calculate_v(self, q, weights_columns, span):
-        m = span
-        n = q.shape[1]+m-1
-        invsqrt_w = 1/np.sqrt(weights_columns)
-        vmat = np.empty((m, q.shape[1]))
-        for i in range(0, m):
-            vmat[i, :] = invsqrt_w[i:i+n-m+1] * q[:, i]
-        return vmat
-
-
-
 class BroadeningFunction:
     def __init__(
             self,
@@ -176,12 +135,7 @@ class BroadeningFunction:
         self.template_spectrum = template_spectrum
         self.span = span
         self.dv = dv
-        if weights is not None:
-            self.svd = WeightedSingularValueDecomposition(
-                template_spectrum, span,
-                weights_columns=weights
-            )
-        elif ~copy:
+        if ~copy:
             self.svd = SingularValueDecomposition(template_spectrum, span)
         else:
             self.svd = None

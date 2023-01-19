@@ -75,21 +75,30 @@ wavelength_intervals = [                        # Intervals used for error calcu
     (4265, 4500), (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250),
     (6575, 6840)
 ]
-delta_v = 0.4         # interpolation sampling resolution for spectrum in km/s
+delta_v = 1.0         # interpolation sampling resolution for spectrum in km/s
 
 system_RV_estimate = -103.40          # to subtract before routine
 orbital_period_estimate = 120.39     # for ignoring component B during eclipse
 
 # # Template Spectra # #
 template_spectrum_path_A = 'Data/template_spectra/4750_25_m05p00.ms.fits'
+# template_spectrum_path_A = 'Data/template_spectra/lte04700-2.00-0.5.PHOENIX-ACES-AGSS-COND-2011-HiRes.fits' # phoenix
 template_spectrum_path_B = 'Data/template_spectra/6250_45_m05p00.ms.fits'
-
+# template_spectrum_path_B = 'Data/template_spectra/lte06200-4.50-0.5.PHOENIX-ACES-AGSS-COND-2011-HiRes.fits'
+# phoenix_waveref = 'Data/template_spectra/WAVE_PHOENIX-ACES-AGSS-COND-2011.fits'
 load_previous = True
 
 # # Alternative generation of options objects above through configuration files:
 routine_options, sep_comp_options, rv_options = load_configuration_files(
     'routine_config.txt', 'sep_config.txt', 'rv_config.txt'
 )
+
+limbd_A = estimate_linear_limbd(wavelength_RV_limit, 2.2, 4700, -0.7, 0.9, loc='Data/tables/atlasco.dat')
+limbd_B = estimate_linear_limbd(wavelength_RV_limit, 4.4, 5700, -0.7, 2.0, loc='Data/tables/atlasco.dat')
+print('limb A: ', limbd_A)
+print('limb B: ', limbd_B)
+rv_options.limbd_coef_A = limbd_A
+rv_options.limbd_coef_B = limbd_B
 
 
 ##################### PREPARATION BEFORE SEPARATION ROUTINE CALLS #############################
@@ -172,6 +181,8 @@ wavelength_template_A, flux_template_A = spf.load_template_spectrum(template_spe
 flux_template_A = flux_template_A[0, :]     # continuum normalized spectrum only
 wavelength_template_B, flux_template_B = spf.load_template_spectrum(template_spectrum_path_B)
 flux_template_B = flux_template_B[0, :]
+# wavelength_template_A, _, flux_template_A = spf.load_phoenix_template(template_spectrum_path_A, phoenix_waveref)
+# wavelength_template_B, _, flux_template_B = spf.load_phoenix_template(template_spectrum_path_B, phoenix_waveref)
 
 # # Limit templates
 mask = (wavelength_template_A > wavelength_RV_limit[0]-100) & (wavelength_template_A < wavelength_RV_limit[1]+100)

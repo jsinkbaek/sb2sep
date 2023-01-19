@@ -209,6 +209,7 @@ class FitParameters:
         self.vary_vsini = vary_vsini
         # Maximum change to vsini allowed each iteration in spectral_separation_routine()
         self.vsini_vary_limit = vsini_vary_limit
+        self.vsini_limits = None
         # Data resolution
         self.spectral_resolution = spectral_resolution
         # How far away to include data in fitting procedure (rotational broadening function profile also masks
@@ -217,8 +218,11 @@ class FitParameters:
         # Linear limb darkening coefficient for rotational broadening function profile fit
         self.limbd_coef = limbd_coef
         self.vary_limbd_coef = vary_limbd_coef
+        self.limbd_limits = None
         # Current RV values (used to update fit RV parameter limits correctly)
         self.RV = RV
+        self.RV_limits = None
+        self.data_limits = None
         # Smoothing value (in km/s) of the convolved gaussian used in broadening function SVD (bf_smooth()).
         self.bf_smooth_sigma = smooth_sigma
         # Width of the broadening function (in velocity space)
@@ -226,8 +230,11 @@ class FitParameters:
         # Continuum value, and whether to fit for it
         self.continuum = continuum
         self.vary_continuum = vary_continuum
+        self.continuum_limits = None
         # Fitting profile to use (either 'RotBF' or 'Gaussian'
         self.fitting_profile = fitting_profile
+        self.amplitude_limits = None
+        self.amplitude = None
 
 
 class RadialVelocityOptions:

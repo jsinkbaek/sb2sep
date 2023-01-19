@@ -33,4 +33,4 @@ weights None		# List or None.
 			# not just same length as number of spectra used in component calculation.
 			# Example (6 spectra): [5.0,0.5,1.0,1.2,120,0.0]    NOTE: No whitespace :)
 
-verbose False		# If True, provides additional prints to console.
+verbose True		# If True, provides additional prints to console.

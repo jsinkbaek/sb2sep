@@ -3,7 +3,7 @@
 # Each non-empty line must include a parameter name followed by its value.
 # Trailing comments are allowed after this.
 
-vsini_guess_A 1.5       # initial guess for rotational broadening function fit. Generally okay to leave as is.
+vsini_guess_A 1.0       # initial guess for rotational broadening function fit. Generally okay to leave as is.
 vsini_guess_B 4.0
 delta_v_bf None       # Should be None, or the same as routine_config delta_v. The only reason you would specify
                      # anything else is if you would want to calculate the broadening function using an internally
@@ -21,14 +21,14 @@ smooth_sigma_B 2.0	# fitting. Inspect non-smoothed broadening functions first, 4
 			        # too high. With a dim component B, a higher smoothing value than for A will
 			        # make it possible to smooth out some of the noise from A.
 
-bf_velocity_span 100	# Full-width of the broadening function in velocity space (km/s). If good first guesses are
+bf_velocity_span 120	# Full-width of the broadening function in velocity space (km/s). If good first guesses are
                         # provided and system velocity is removed beforehand, this only needs to be slightly higher
                         # than 2*(K_A + K_B). Affects performance of routine significantly.
                         # You can also use the "center_on_system_rv" arguments below to specify an internal offset
                         # to calculate the broadening function around.
 
-velocity_fit_width_A 12 # How far away to include data during fitting of component A RV (km/s). (Half-width)
-velocity_fit_width_B 12
+velocity_fit_width_A 20 # How far away to include data during fitting of component A RV (km/s). (Half-width)
+velocity_fit_width_B 15
 
 refit_width_A None	# Float, if set, RV procedure is repeated with this velocity_fit_width_A after.
 refit_width_B None	# These slows computation, but might improve final precision on found RVs.

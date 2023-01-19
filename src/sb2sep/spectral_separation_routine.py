@@ -524,6 +524,14 @@ def recalculate_RVs(
                         f'RV dev spec {i}: {np.abs(rvdev_A):.{options.print_prec}f} (A) '
                         f'{np.abs(rvdev_B):.{options.print_prec}f} (B)'
                     )
+                    # Debug plots
+                    plt.figure()
+                    plt.plot(model_A[2], model_A[4], 'k-')
+                    plt.plot(model_A[2], model_A[1], 'r--')
+                    plt.figure()
+                    plt.plot(model_B[2], model_B[4], 'k-')
+                    plt.plot(model_B[2], model_B[1], 'b--')
+                    plt.show(block=True)
                 if (np.abs(rvdev_A) < options.convergence_limit or i not in options.evaluate_spectra_A) and \
                         (np.abs(rvdev_B) < options.convergence_limit or i not in options.evaluate_spectra_B):
                     if options.verbose:
@@ -707,7 +715,6 @@ def recalculate_RVs_orders(
                                     f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'
                                 )
                         break
-
             rv_lower_limit = options.rv_lower_limit
             if plot_ax_A is not None:
                 _update_bf_plot(plot_ax_A, bf_fitres_A[plot_order, i], RV_collection_orders_A[plot_order, i], i)
@@ -1138,8 +1145,8 @@ def spectral_separation_routine(
             rv_options.vsini_A = np.mean(vsini_A)
             rv_options.vsini_B = np.mean(vsini_B)
         if options.verbose:
-            print('vsini A: ', rv_options.vsini_A)
-            print('vsini B: ', rv_options.vsini_B)
+            print('Avg vsini A: ', np.mean(vsini_A))
+            print('Avg vsini B: ', np.mean(vsini_B))
 
         iterations += 1
         if RV_collection_A.ndim == 2:
