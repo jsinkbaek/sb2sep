@@ -202,7 +202,8 @@ class FitParameters:
             RV=None,
             continuum=0.0,
             vary_continuum=True,
-            fitting_profile='RotBF'
+            fitting_profile='RotBF',
+            gui=False
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini = vsini_guess
@@ -235,6 +236,7 @@ class FitParameters:
         self.fitting_profile = fitting_profile
         self.amplitude_limits = None
         self.amplitude = None
+        self.gui = gui
 
 
 class RadialVelocityOptions:
@@ -276,7 +278,8 @@ class RadialVelocityOptions:
             center_on_system_rv_B=False,
             vary_vsini_on_refit_A=False,
             vary_vsini_on_refit_B=False,
-            delta_v_bf=None
+            delta_v_bf=None,
+            fit_gui=False
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini_A = vsini_guess_A
@@ -345,6 +348,8 @@ class RadialVelocityOptions:
         self.vary_vsini_on_refit_B = vary_vsini_on_refit_B
 
         self.delta_v_bf = delta_v_bf
+
+        self.fit_gui = fit_gui
 
 
 class SeparateComponentsOptions:

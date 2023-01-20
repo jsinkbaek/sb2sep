@@ -13,20 +13,19 @@ same author. Both follows the formula layout of the article:
 """
 import matplotlib.pyplot as plt
 
-from sb2sep.calculate_radial_velocities import radial_velocity_single_component
-from sb2sep.broadening_function_svd import *
-from sb2sep.storage_classes import FitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
+from .calculate_radial_velocities import radial_velocity_single_component
+from .broadening_function_svd import *
+from .storage_classes import FitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
     RoutineOptions
-import sb2sep.spectrum_processing_functions as spf
+from . import spectrum_processing_functions as spf
 import numpy as np
 from copy import deepcopy
 from joblib import Parallel, delayed
-import matplotlib
-import sb2sep.broadening_function_svd as bfsvd
 # from scipy.interpolate import interp1d
 import scipy.constants as scc
 from matplotlib.backends.backend_pdf import PdfPages
 from copy import copy
+from pprint import pprint
 
 
 def shift_spectrum(flux, radial_velocity_shift, delta_v):
@@ -474,7 +473,8 @@ def recalculate_RVs(
                     options.bf_smooth_sigma_A, options.bf_velocity_span, vary_vsini_A,
                     options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=rv0+RV_collection_A[i],
                     continuum=continuum_A,
-                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile
+                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile,
+                    gui=options.fit_gui
                 )
 
                 # Perform calculation
@@ -483,9 +483,11 @@ def recalculate_RVs(
                     corrected_flux_A, 1 - template_shifted[~buffer_mask], v_span, delta_v_bf
                 )
                 BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
-                RV_deviation_A, model_A = radial_velocity_single_component(
+                rvsc_res_A = radial_velocity_single_component(
                     corrected_flux_A, BRsvd_template_A, fitparams_A
                 )
+                RV_deviation_A, model_A = rvsc_res_A[0], rvsc_res_A[1]
+
                 # RV_collection_A[i] = RV_collection_A[i] + RV_deviation_A
                 rvdev_A = RV_deviation_A -RV_collection_A[i]-rv0
                 RV_collection_A[i] = RV_deviation_A - rv0
@@ -506,16 +508,19 @@ def recalculate_RVs(
                     options.bf_smooth_sigma_B, options.bf_velocity_span, vary_vsini_B,
                     options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=rv0+RV_collection_B[i],
                     continuum=continuum_B,
-                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile
+                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile,
+                    gui=options.fit_gui
                 )
                 template_shifted = shift_spectrum(flux_templateB, -rv0, delta_v)
                 BRsvd_template_B = BroadeningFunction(
                     corrected_flux_B, 1 - template_shifted[~buffer_mask], v_span, delta_v_bf
                 )
                 BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
-                RV_deviation_B, model_B = radial_velocity_single_component(
+                rvsc_res_B = radial_velocity_single_component(
                     corrected_flux_B, BRsvd_template_B, fitparams_B
                 )
+                RV_deviation_B, model_B = rvsc_res_B[0], rvsc_res_B[1]
+
                 # RV_collection_B[i] = RV_collection_B[i] + RV_deviation_B
                 rvdev_B = RV_deviation_B-RV_collection_B[i]-rv0
                 RV_collection_B[i] = RV_deviation_B - rv0
@@ -525,19 +530,19 @@ def recalculate_RVs(
                         f'{np.abs(rvdev_B):.{options.print_prec}f} (B)'
                     )
                     # Debug plots
-                    plt.figure()
-                    plt.plot(model_A[2], model_A[4], 'k-')
-                    plt.plot(model_A[2], model_A[1], 'r--')
-                    plt.figure()
-                    plt.plot(model_B[2], model_B[4], 'k-')
-                    plt.plot(model_B[2], model_B[1], 'b--')
-                    plt.show(block=True)
+                    # plt.figure()
+                    # plt.plot(model_A[2], model_A[4], 'k-')
+                    # plt.plot(model_A[2], model_A[1], 'r--')
+                    # plt.figure()
+                    # plt.plot(model_B[2], model_B[4], 'k-')
+                    # plt.plot(model_B[2], model_B[1], 'b--')
+                    # plt.show(block=True)
                 if (np.abs(rvdev_A) < options.convergence_limit or i not in options.evaluate_spectra_A) and \
                         (np.abs(rvdev_B) < options.convergence_limit or i not in options.evaluate_spectra_B):
                     if options.verbose:
-                        print(f'RV: spectrum {i} successful.')
+                        print(f'RV: spectrum {i} converged.')
                     break
-                elif iterations > options.iteration_limit:
+                elif iterations >= options.iteration_limit or len(rvsc_res_A) + len(rvsc_res_B) == 6:
                     if k == 1 and options.verbose is True:
                         warnings.warn(
                             f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'

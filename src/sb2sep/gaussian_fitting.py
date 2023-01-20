@@ -182,18 +182,30 @@ def fitting_routine_gaussian_profile(
     if fitparams.continuum_limits is not None:
         params['c'].set(min=fitparams.continuum_limits[0], max=fitparams.continuum_limits[1])
 
-    fit = model.fit(broadening_function_values, params, x=velocities, xtol=1E-8, ftol=1E-8, max_nfev=500)
+    if fitparams.data_limits is not None:
+        mask_data = (velocities > fitparams.data_limits[0]) & (velocities < fitparams.data_limits[1])
+    elif fitparams.RV is not None:
+        mask_data = (velocities > fitparams.RV - fitparams.velocity_fit_width) & \
+                    (velocities < fitparams.RV + fitparams.velocity_fit_width)
+    else:
+        mask_data = (velocities > velocities[peak_idx]-fitparams.velocity_fit_width) & \
+                    (velocities < velocities[peak_idx]+fitparams.velocity_fit_width)
+
+    fit = model.fit(
+        broadening_function_values[mask_data], params, x=velocities[mask_data], xtol=1E-8, ftol=1E-8, max_nfev=500
+    )
 
     if print_report:
         print(fit.fit_report(show_correl=False))
 
-    model = fit.best_fit
+    model = fit.eval(x=velocities)
 
     return fit, model
 
 
 def fitting_routine_gaussian_gui(
-    velocities: np.ndarray, broadening_function_values: np.ndarray, fitparams: FitParameters
+    velocities: np.ndarray, broadening_function_values: np.ndarray, fitparams: FitParameters,
+    smooth_sigma: float, dv: float
 ):
     fitparams_copy = FitParameters(
         copy(fitparams.vsini), copy(fitparams.spectral_resolution), copy(fitparams.velocity_fit_width),
@@ -203,26 +215,31 @@ def fitting_routine_gaussian_gui(
         copy(fitparams.fitting_profile)
     )
     fit, model = fitting_routine_gaussian_profile(
-        velocities, broadening_function_values, fitparams_copy, dv=1., smooth_sigma=1.
+        velocities, broadening_function_values, fitparams_copy, dv=dv, smooth_sigma=smooth_sigma
     )
     fig = plt.figure()
     line_bf = plt.plot(velocities, broadening_function_values, 'k-')
-    line_fit = plt.plot(velocities, model, 'r-')
+    line_fit = plt.plot(velocities, model, 'r-')[0]
     plt.draw()
-    plt.pause(0.001)
+    plt.pause(0.05)
     while True:
         print('Current fit parameters:')
         print(f"1. sigma       {fit.best_values['sigma']:.3f}")
         print(f"2. center      {fit.best_values['center']:.3f}")
         print(f"3. amplitude   {fit.best_values['amplitude']:.3f}")
         print(f"4. constant    {fit.best_values['c']:.3f}")
-        print('Accept (y), impose parameter limits (l1, l2, l3, 4), change initial value (i1, i2, i3, i4),')
+        print('Accept and iterate (y), accept and move to next spectrum (y!), ')
+        print('impose parameter limits (l1, l2, l3, 4), change initial value (i1, i2, i3, i4),')
         print('or select central value and data limits by gui (g).')
         while True:
             inpt = input()
             if inpt == 'y':
+                plt.close(fig)
                 return fit, model
-            elif 'l' in inpt or inpt == 'i' or inpt == 'g':
+            elif inpt == 'y!':
+                plt.close(fig)
+                return fit, model, 0
+            elif 'l' in inpt or 'i' in inpt or inpt == 'g':
                 break
             else:
                 print(f'Unrecognized input {inpt}. Try again.')
@@ -259,17 +276,19 @@ def fitting_routine_gaussian_gui(
             else:
                 raise ValueError(f'Unknown input number in {inpt}. Acceptable values [i1, i2, i3, i4].')
         elif inpt == 'g':
-            print('First two button presses marks data limit, last is RV')
+            print('First two button presses marks data limit, last is RV and height')
             selects = plt.ginput(n=3, timeout=-1)
-            x1, x2, x3 = selects[0][0], selects[1][0], selects[2][0]
+            x1, x2, x3, y3 = selects[0][0], selects[1][0], selects[2][0], selects[2][1]
             fitparams_copy.RV = x3
+            fitparams_copy.amplitude = y3 * fit.best_values['sigma']*np.sqrt(2*np.pi)
             fitparams_copy.data_limits = (x1, x2)
         else:
             print(f'Unknown input {inpt}. Try again.')
             continue
         fit, model = fitting_routine_gaussian_profile(
-            velocities, broadening_function_values, fitparams_copy, dv=1., smooth_sigma=1.
+            velocities, broadening_function_values, fitparams_copy, dv=dv, smooth_sigma=smooth_sigma
         )
         line_fit.set_ydata(model)
         fig.canvas.draw()
         fig.canvas.flush_events()
+        plt.pause(0.05)

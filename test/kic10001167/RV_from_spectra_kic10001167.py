@@ -75,7 +75,7 @@ wavelength_intervals = [                        # Intervals used for error calcu
     (4265, 4500), (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250),
     (6575, 6840)
 ]
-delta_v = 1.0         # interpolation sampling resolution for spectrum in km/s
+delta_v = 0.8         # interpolation sampling resolution for spectrum in km/s
 
 system_RV_estimate = -103.40          # to subtract before routine
 orbital_period_estimate = 120.39     # for ignoring component B during eclipse
@@ -92,6 +92,7 @@ load_previous = True
 routine_options, sep_comp_options, rv_options = load_configuration_files(
     'routine_config.txt', 'sep_config.txt', 'rv_config.txt'
 )
+rv_options.fit_gui = False
 
 limbd_A = estimate_linear_limbd(wavelength_RV_limit, 2.2, 4700, -0.7, 0.9, loc='Data/tables/atlasco.dat')
 limbd_B = estimate_linear_limbd(wavelength_RV_limit, 4.4, 5700, -0.7, 2.0, loc='Data/tables/atlasco.dat')

@@ -246,10 +246,10 @@ class BroadeningFunction:
         if self.bf_smooth is None:
             raise TypeError('self.bf_smooth. self.smooth() must be run prior to fitting')
 
-        self.fit, self.model_values = fitting_routine(
+        fit_results = fitting_routine(
             self.velocity, self.bf_smooth, fitparams, self.smooth_sigma, self.dv
         )
-        return self.fit, self.model_values
+        return fit_results
 
 
 

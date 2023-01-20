@@ -110,6 +110,7 @@ load_previous = True
 routine_options, sep_comp_options, rv_options = load_configuration_files(
     'routine_config.txt', 'sep_config.txt', 'rv_config.txt'
 )
+rv_options.fit_gui = True
 
 
 ##################### PREPARATION BEFORE SEPARATION ROUTINE CALLS #############################

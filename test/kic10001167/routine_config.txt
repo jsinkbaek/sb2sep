@@ -3,14 +3,14 @@
 # Each non-empty line must include a parameter name followed by its value.
 # Trailing comments are allowed after this.
 
-delta_v 1.0             # (km/s) MUST BE SET TO THE SAME VALUE AS USED TO RESAMPLE SPECTRA to EQUISPACED VELOCITY GRID
+delta_v 0.8             # (km/s) MUST BE SET TO THE SAME VALUE AS USED TO RESAMPLE SPECTRA to EQUISPACED VELOCITY GRID
 
 convergence_limit 1E-5		# Convergence criteria for RMS of radial velocities needed to exit 
 				# routine.
 
 iteration_limit 5		# Maximum allowed iterations of parent routine before automatic exit.
 
-plot False			    # If True, diagnostic plots are shown and updated between iterations.
+plot True			    # If True, diagnostic plots are shown and updated between iterations.
 
 verbose True			# Indicates if parent routine should print extra updates to console.
 

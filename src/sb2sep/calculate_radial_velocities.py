@@ -198,58 +198,20 @@ def radial_velocity_single_component(
         fitting_routine = rbff.fitting_routine_rotational_broadening_profile
         get_fit_parameter_values = rbff.get_fit_parameter_values
     elif fitparams.fitting_profile == 'Gaussian':
-        fitting_routine = gf.fitting_routine_gaussian_profile
+        if fitparams.gui is False:
+            fitting_routine = gf.fitting_routine_gaussian_profile
+        else:
+            fitting_routine = gf.fitting_routine_gaussian_gui
         get_fit_parameter_values = gf.get_fit_parameter_values
     else:
         raise ValueError('Unrecognised fitting profile selected.')
-    fit, model_values = BFsvd.fit_rotational_profile(fitparams, fitting_routine)
+    fit_res = BFsvd.fit_rotational_profile(fitparams, fitting_routine)
+    fit, model_values = fit_res[0], fit_res[1]
 
     res = get_fit_parameter_values(fit.params)
     RV = res[1]
 
-    return RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth)
-
-
-def radial_velocity_single_component_gui(
-        inv_flux: np.ndarray,
-        broadening_function_template: BroadeningFunction,
-        fitparams: FitParameters
-):
-    """
-    Calculates the broadening function of a spectrum and fits a single rotational broadening function profile to it.
-    Needs a template object of the BroadeningFunction with the correct parameters and template spectrum already set.
-    Setup to be of convenient use during the spectral separation routine (see spectral_separation_routine.py).
-
-    :param inv_flux:                     np.ndarray. Inverted flux of the program spectrum (e.g. 1-normalized_flux)
-    :param broadening_function_template: BroadeningFunction. The template used to calculate the broadening function.
-    :param fitparams:                   InitialFitParameters. Object that stores the fitting parameters needed.
-    :return:    RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth)
-                RV:                 float, the fitted RV value
-                fit:                lmfit.MinimizerResult. The object storing the fit parameters.
-                model_values:       np.ndarray. Broadening function values according to the fit.
-                BFsvd.velocity:     np.ndarray. Velocity values for the broadening function and model values.
-                BFsvd.bf:           np.ndarray. Broadening function values calculated.
-                BFsvd.bf_smooth:    np.ndarray. Smoothed broadening function values.
-    """
-    BFsvd = copy(broadening_function_template)
-    BFsvd.spectrum = inv_flux
-
-    # Create Broadening Function
-    BFsvd.solve()
-    BFsvd.smooth()
-
-    # Fit rotational broadening function profile
-    if fitparams.fitting_profile == 'RotBF':
-        fitting_routine = rbff.fitting_routine_rotational_broadening_profile
-        get_fit_parameter_values = rbff.get_fit_parameter_values
-    elif fitparams.fitting_profile == 'Gaussian':
-        fitting_routine = gf.fitting_routine_gaussian_profile
-        get_fit_parameter_values = gf.get_fit_parameter_values
-    else:
-        raise ValueError('Unrecognised fitting profile selected.')
-    fit, model_values = BFsvd.fit_rotational_profile(fitparams, fitting_routine)
-
-    res = get_fit_parameter_values(fit.params)
-    RV = res[1]
-
-    return RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth)
+    if len(fit_res) == 2:
+        return RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth)
+    else:       # Requested stop iteration and move to next spectrum
+        return RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth), 0
