@@ -47,35 +47,49 @@ files_science = [
 ]
 folder_science = '/home/sinkbaek/Data/KIC10001167/'
 
-use_for_spectral_separation = np.array([
-    'FIBi230039_step011_merge.fits', 'FIBi240074_step011_merge.fits',
-    'FIBi240077_step011_merge.fits', 'FIBj150077_step011_merge.fits',
-    'FIBk030040_step011_merge.fits', 'FIBk040034_step011_merge.fits',
-    'FIBk050060_step011_merge.fits', 'FIBk060008_step011_merge.fits',
-    'FIBk140072_step011_merge.fits', 'FIBl010111_step011_merge.fits',
-    'FIBl050130_step011_merge.fits', 'FIBl080066_step011_merge.fits',
-    'FIDg050102_step011_merge.fits', 'FIDg060105_step011_merge.fits',
-    'FIDg070066_step011_merge.fits', 'FIDg080034_step011_merge.fits',
-    'FIDg160034_step011_merge.fits', 'FIDh100076_step011_merge.fits',
-    'FIDh150097_step011_merge.fits', 'FIDh160097_step011_merge.fits',
-    'FIDh170096_step011_merge.fits', 'FIDh200065_step011_merge.fits',
-    'FIEf140066_step011_merge.fits', 'FIEh020096_step012_merge.fits',
-    'FIEh060100_step012_merge.fits', 'FIEh190105_step011_merge.fits',
-    'FIFj100096_step011_merge.fits'
-])
+# use_for_spectral_separation = np.array([
+#     'FIBi230039_step011_merge.fits', 'FIBi240074_step011_merge.fits',
+#     'FIBi240077_step011_merge.fits', 'FIBj150077_step011_merge.fits',
+#     'FIBk030040_step011_merge.fits', 'FIBk040034_step011_merge.fits',
+#     'FIBk050060_step011_merge.fits', 'FIBk060008_step011_merge.fits',
+#     'FIBk140072_step011_merge.fits', 'FIBl010111_step011_merge.fits',
+#     'FIBl050130_step011_merge.fits', 'FIBl080066_step011_merge.fits',
+#     'FIDg050102_step011_merge.fits', 'FIDg060105_step011_merge.fits',
+#     'FIDg070066_step011_merge.fits', 'FIDg080034_step011_merge.fits',
+#     'FIDg160034_step011_merge.fits', 'FIDh100076_step011_merge.fits',
+#     'FIDh150097_step011_merge.fits', 'FIDh160097_step011_merge.fits',
+#     'FIDh170096_step011_merge.fits', 'FIDh200065_step011_merge.fits',
+#     'FIEf140066_step011_merge.fits', 'FIEh020096_step012_merge.fits',
+#     'FIEh060100_step012_merge.fits', 'FIEh190105_step011_merge.fits',
+#     'FIFj100096_step011_merge.fits'
+# ])
+
+use_for_spectral_separation = np.array(['FIDg060105_step011_merge.fits', 'FIDh200065_step011_merge.fits',
+       'FIEh190105_step011_merge.fits', 'FIDh150097_step011_merge.fits',
+       'FIBl050130_step011_merge.fits', 'FIEh020096_step012_merge.fits',
+       'FIBk050060_step011_merge.fits', 'FIDg070066_step011_merge.fits',
+       'FIDg080034_step011_merge.fits', 'FIBl080066_step011_merge.fits',
+       'FIDg050102_step011_merge.fits', 'FIDh170096_step011_merge.fits',
+       'FIDh160097_step011_merge.fits', 'FIBi240077_step011_merge.fits',
+       'FIBi230039_step011_merge.fits', 'FIBi240074_step011_merge.fits',
+       'FIBk060008_step011_merge.fits', 'FIFj100096_step011_merge.fits',
+       'FIEh060100_step012_merge.fits', 'FIBk030040_step011_merge.fits',
+       'FIBk140072_step011_merge.fits', 'FIDh100076_step011_merge.fits',
+       'FIBk040034_step011_merge.fits', 'FIEf140066_step011_merge.fits',
+       'FIBj150077_step011_merge.fits'])
 observatory_location = EarthLocation.of_site("Roque de los Muchachos")
 observatory_name = "Roque de los Muchachos"
 stellar_target = "kic10001167"
-wavelength_normalization_limit = (4150, 7000)   # Ångström, limit to data before performing continuum normalization
-wavelength_RV_limit = (4200, 7000)              # Ångström, the area used after normalization
+wavelength_normalization_limit = (3900, 7000)   # Ångström, limit to data before performing continuum normalization
+wavelength_RV_limit = (3950, 7000)              # Ångström, the area used after normalization
 wavelength_buffer_size = 4.0                     # Ångström, padding included at ends of spectra. Useful when doing
                                                 # wavelength shifts with np.roll()
-wavelength_intervals_full = [(4265, 5800)]      # Ångström, the actual interval used.
+wavelength_intervals_full = [(4000, 5800)]      # Ångström, the actual interval used.
 wavelength_intervals = [                        # Intervals used for error calculation
-    (4265, 4500), (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250),
+    (4000, 4265), (4265, 4500), (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250),
     (6575, 6840)
 ]
-delta_v = 0.8         # interpolation sampling resolution for spectrum in km/s
+delta_v = 1.0         # interpolation sampling resolution for spectrum in km/s
 
 system_RV_estimate = -103.40          # to subtract before routine
 orbital_period_estimate = 120.39     # for ignoring component B during eclipse
@@ -219,18 +233,13 @@ wavelength, flux_unbuffered_list, wavelength_buffered, flux_buffered_list, buffe
 #    plot=False, fit_two_components=False
 #)
 RV_guess_collection = np.empty((len(wavelength_collection_list), 2))
-# RV_guess_collection[:, 0] = RV_guesses_A
-# RV_guesses_B = -RV_guesses_A * (mass_A_estimate / mass_B_estimate)
 
-# RV_guess_collection[:, 1] = RV_guesses_B
-
-model = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/Binary_Analysis/JKTEBOP/kic10001167/kepler_pdcsap/model.out')
-phase = np.mod(bjdtdb-2455028.10033, orbital_period_estimate, dtype=np.float64)/orbital_period_estimate
-print(bjdtdb-2455028.10033)
-RV_guess_collection[:, 0] = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/RV/Data/additionals/separation_routine/10001167/4500_5825_rvA.txt')[:, 1]
-RV_guess_collection[:, 1] = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/RV/Data/additionals/separation_routine/10001167/4500_5825_rvB.txt')[:, 1]
-RV_guess_collection[:, 0] = np.loadtxt('results/4265_5800_rvA.txt')[:, 1]
-RV_guess_collection[:, 1] = np.loadtxt('results/4265_5800_rvB.txt')[:, 1]
+model = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/Binary_Analysis/JKTEBOP/kic10001167/kepler_pdcsap_2/model.out')
+phase = np.mod(bjdtdb-2455028.0991277853, orbital_period_estimate, dtype=np.float64)/orbital_period_estimate
+# RV_guess_collection[:, 0] = np.loadtxt('results/4265_5800_rvA.txt')[:, 1]
+# RV_guess_collection[:, 1] = np.loadtxt('results/4265_5800_rvB.txt')[:, 1]
+RV_guess_collection[:, 0] = np.interp(phase, model[:, 0], model[:, 6]) - system_RV_estimate
+RV_guess_collection[:, 1] = np.interp(phase, model[:, 0], model[:, 7]) - system_RV_estimate
 
 
 ########################### SEPARATION ROUTINE CALLS #################################
@@ -242,9 +251,8 @@ if True:
         flux_template_B_buffered,
         RV_guess_collection,
         routine_options, sep_comp_options, rv_options,
-        wavelength_buffer_size, time_values=bjdtdb - (2400000 + 55028.10033), period=orbital_period_estimate
+        wavelength_buffer_size, time_values=bjdtdb - (2400000 + 55028.099127785), period=orbital_period_estimate
     )
-    plt.show(block=True)
 # # # Calculate error # # #
 RV_guess_collection[:, 0] = np.loadtxt('results/4265_5800_rvA.txt')[:, 1]
 RV_guess_collection[:, 1] = np.loadtxt('results/4265_5800_rvB.txt')[:, 1]
@@ -254,7 +262,8 @@ interval_results = ssr.spectral_separation_routine_multiple_intervals(
      flux_template_B_buffered,
      RV_guess_collection,
      routine_options, sep_comp_options, rv_options,
-     wavelength_buffer_size, time_values=bjdtdb-(2400000+55028.10033), period=orbital_period_estimate
+     wavelength_buffer_size, time_values=bjdtdb-(2400000+55028.099127785), period=orbital_period_estimate
 )
+plt.show(block=True)
 
 # output is saved to results/.

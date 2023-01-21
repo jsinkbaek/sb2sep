@@ -3,7 +3,7 @@
 # Each non-empty line must include a parameter name followed by its value.
 # Trailing comments are allowed after this.
 
-vsini_guess_A 1.0       # initial guess for rotational broadening function fit. Generally okay to leave as is.
+vsini_guess_A 3.0       # initial guess for rotational broadening function fit. Generally okay to leave as is.
 vsini_guess_B 4.0
 delta_v_bf None       # Should be None, or the same as routine_config delta_v. The only reason you would specify
                      # anything else is if you would want to calculate the broadening function using an internally
@@ -17,7 +17,7 @@ vsini_vary_limit_B None # If adjust_vsini is True in routine_config.txt, the ini
 
 spectral_resolution 67000   # should be set to the spectral resolution of the spectrograph.
 smooth_sigma_A 1.0	# Gaussian smoothing parameters in km/s to use on broadening functions before
-smooth_sigma_B 2.0	# fitting. Inspect non-smoothed broadening functions first, 4.0 are likely
+smooth_sigma_B 1.5	# fitting. Inspect non-smoothed broadening functions first, 4.0 are likely
 			        # too high. With a dim component B, a higher smoothing value than for A will
 			        # make it possible to smooth out some of the noise from A.
 
@@ -28,7 +28,7 @@ bf_velocity_span 120	# Full-width of the broadening function in velocity space (
                         # to calculate the broadening function around.
 
 velocity_fit_width_A 20 # How far away to include data during fitting of component A RV (km/s). (Half-width)
-velocity_fit_width_B 15
+velocity_fit_width_B 12
 
 refit_width_A None	# Float, if set, RV procedure is repeated with this velocity_fit_width_A after.
 refit_width_B None	# These slows computation, but might improve final precision on found RVs.
