@@ -80,14 +80,14 @@ use_for_spectral_separation = np.array(['FIDg060105_step011_merge.fits', 'FIDh20
 observatory_location = EarthLocation.of_site("Roque de los Muchachos")
 observatory_name = "Roque de los Muchachos"
 stellar_target = "kic10001167"
-wavelength_normalization_limit = (3900, 7000)   # Ångström, limit to data before performing continuum normalization
-wavelength_RV_limit = (3950, 7000)              # Ångström, the area used after normalization
+wavelength_normalization_limit = (4315, 7000)   # Ångström, limit to data before performing continuum normalization
+wavelength_RV_limit = (4315, 7000)              # Ångström, the area used after normalization
 wavelength_buffer_size = 4.0                     # Ångström, padding included at ends of spectra. Useful when doing
                                                 # wavelength shifts with np.roll()
-wavelength_intervals_full = [(4000, 5800)]      # Ångström, the actual interval used.
+wavelength_intervals_full = [(4400, 5825)]      # Ångström, the actual interval used.
 wavelength_intervals = [                        # Intervals used for error calculation
-    (4000, 4265), (4265, 4500), (4500, 4765), (4765, 5030), (5030, 5295), (5295, 5560), (5560, 5825), (5985, 6250),
-    (6575, 6840)
+    (4400, 4690), (4690, 4980), (4980, 5270), (5270, 5560), (5560, 5850),
+    (5985, 6275), (6565, 6840)
 ]
 delta_v = 1.0         # interpolation sampling resolution for spectrum in km/s
 
@@ -96,10 +96,9 @@ orbital_period_estimate = 120.39     # for ignoring component B during eclipse
 
 # # Template Spectra # #
 template_spectrum_path_A = 'Data/template_spectra/4750_25_m05p00.ms.fits'
-# template_spectrum_path_A = 'Data/template_spectra/lte04700-2.00-0.5.PHOENIX-ACES-AGSS-COND-2011-HiRes.fits' # phoenix
 template_spectrum_path_B = 'Data/template_spectra/6250_45_m05p00.ms.fits'
-# template_spectrum_path_B = 'Data/template_spectra/lte06200-4.50-0.5.PHOENIX-ACES-AGSS-COND-2011-HiRes.fits'
-# phoenix_waveref = 'Data/template_spectra/WAVE_PHOENIX-ACES-AGSS-COND-2011.fits'
+# convolve_templates_to_res = 80000
+
 load_previous = True
 
 # # Alternative generation of options objects above through configuration files:
@@ -125,16 +124,18 @@ RA_array = np.array([])
 DEC_array = np.array([])
 spectral_separation_array_A = np.array([])
 spectral_separation_array_B = np.array([])
+expt_array = np.array([])
 
 
 # # # Load fits files, collect and normalize data # # #
 i = 0
 for filename in files_science:
     # Load observation
-    wavelength, flux, date, ra, dec = spf.load_program_spectrum(folder_science + filename)
+    wavelength, flux, date, ra, dec, exptime = spf.load_program_spectrum(folder_science + filename)
     date_array = np.append(date_array, date)
     RA_array = np.append(RA_array, ra * 15.0)  # converts unit
     DEC_array = np.append(DEC_array, dec)
+    expt_array = np.append(expt_array, exptime)
 
     # Prepare for continuum fit
     selection_mask = (wavelength > wavelength_normalization_limit[0]) & \
@@ -169,12 +170,16 @@ for filename in files_science:
     flux_collection_list.append(flux)
     i += 1
 
-
 sep_comp_options.use_for_spectral_separation_A = spectral_separation_array_A        # see notes earlier
 sep_comp_options.use_for_spectral_separation_B = spectral_separation_array_B
 
+sep_comp_options.weights = np.sqrt(expt_array) / np.sqrt(np.max(expt_array))
+print(sep_comp_options.weights)
+
 print(sep_comp_options.use_for_spectral_separation_A)
 print(sep_comp_options.use_for_spectral_separation_B)
+print(rv_options.ignore_at_phase_B)
+
 # # Verify RA and DEC # #
 RA, DEC = RA_array[0], DEC_array[0]
 
@@ -211,6 +216,19 @@ wavelength, (flux_collection, flux_template_A, flux_template_B) = spf.resample_m
     (wavelength_template_B, flux_template_B)
 )
 
+# # Convolve templates to lower resolution
+if False:
+    speed_light = scc.speed_of_light / 1000
+    hwidth = int(np.floor(wavelength.size / 2)) - 2
+    wl_kms = np.arange(-hwidth, hwidth + 1, 1) * delta_v
+    gaussian_width = (speed_light / convolve_templates_to_res) / (2.354 * delta_v)
+    amplitude = 1 / (np.sqrt(2 * np.pi) * gaussian_width)
+    gaussian = amplitude * np.exp(-0.5 * (wl_kms / gaussian_width) ** 2)
+    flux_template_A = np.convolve(flux_template_A, gaussian, mode='same')
+    flux_template_B = np.convolve(flux_template_B, gaussian, mode='same')
+
+
+
 # # Perform barycentric corrections # #
 for i in range(0, flux_collection[0, :].size):
     flux_collection[:, i] = ssr.shift_spectrum(
@@ -244,7 +262,7 @@ RV_guess_collection[:, 1] = np.interp(phase, model[:, 0], model[:, 7]) - system_
 
 ########################### SEPARATION ROUTINE CALLS #################################
 # # #  Separate component spectra and calculate RVs iteratively for large interval # # #
-if True:
+if False:
     interval_results = ssr.spectral_separation_routine_multiple_intervals(
         wavelength_buffered, wavelength_intervals_full, flux_collection_buffered,
         flux_template_A_buffered,
@@ -254,16 +272,19 @@ if True:
         wavelength_buffer_size, time_values=bjdtdb - (2400000 + 55028.099127785), period=orbital_period_estimate
     )
 # # # Calculate error # # #
-RV_guess_collection[:, 0] = np.loadtxt('results/4265_5800_rvA.txt')[:, 1]
-RV_guess_collection[:, 1] = np.loadtxt('results/4265_5800_rvB.txt')[:, 1]
-interval_results = ssr.spectral_separation_routine_multiple_intervals(
-     wavelength_buffered, wavelength_intervals, flux_collection_buffered,
-     flux_template_A_buffered,
-     flux_template_B_buffered,
-     RV_guess_collection,
-     routine_options, sep_comp_options, rv_options,
-     wavelength_buffer_size, time_values=bjdtdb-(2400000+55028.099127785), period=orbital_period_estimate
-)
+for i in range(len(wavelength_intervals)):
+    # RV_guess_collection[:, 0] = np.interp(phase, model[:, 0], model[:, 6]) - system_RV_estimate
+    # RV_guess_collection[:, 1] = np.interp(phase, model[:, 0], model[:, 7]) - system_RV_estimate
+    RV_guess_collection[:, 0] = np.loadtxt('results/4400_5825_rvA.txt')[:, 1]
+    RV_guess_collection[:, 1] = np.loadtxt('results/4400_5825_rvB.txt')[:, 1]
+    interval_results = ssr.spectral_separation_routine_multiple_intervals(
+        wavelength_buffered, [wavelength_intervals[i]], flux_collection_buffered,
+        flux_template_A_buffered,
+        flux_template_B_buffered,
+        RV_guess_collection,
+        routine_options, sep_comp_options, rv_options,
+        wavelength_buffer_size, time_values=bjdtdb - (2400000 + 55028.099127785), period=orbital_period_estimate
+    )
 plt.show(block=True)
 
 # output is saved to results/.

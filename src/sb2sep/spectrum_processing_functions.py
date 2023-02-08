@@ -44,8 +44,9 @@ def load_program_spectrum(program_spectrum_path: str):
         wl0, delta_wl = hdr['CRVAL1'], hdr['CDELT1']
         RA, DEC = hdr['OBJRA'], hdr['OBJDEC']
         date = hdr['DATE-AVG']
+        exptime = hdr['EXPTIME']
     wavelength = np.linspace(wl0, wl0 + delta_wl * flux.size, flux.size)
-    return wavelength, flux, date, RA, DEC
+    return wavelength, flux, date, RA, DEC, exptime
 
 
 def _resample_multiple_spectra(wavelength_template: np.ndarray, wavelength_list: list, flux_list: list):
@@ -370,13 +371,27 @@ def simple_normalizer(
         normalized_flux[~np.isfinite(normalized_flux)] = replace_non_finite
 
     if reduce_em_lines:
-        std = np.std(normalized_flux[selection_mask_1])
-        mean = np.mean(normalized_flux[selection_mask_1])
-        selection_mask_3 = normalized_flux < mean + 2.5*std
+        wav_ = wavelength[selection_mask_1]
+        flu_ = normalized_flux[selection_mask_1]
+        selection_mask_3 = np.zeros(normalized_flux.size, dtype=bool)
+        stds = np.zeros(wavelength.size)
+        medians = np.zeros(wavelength.size)
+        for i in range(wavelength.size):
+            mask = (wav_ > wavelength[i]-250) & (wav_ < wavelength[i]+250) & (flu_ > 1.0)
+            flu_sel = flu_[mask]
+            median = np.median(flu_sel)
+            std = 1.4826 * (median-1.0)
+            stds[i] = std
+            medians[i] = median
+            if normalized_flux[i] < 1 + 2.5*std:
+                selection_mask_3[i] = True
+        selection_mask_4 = selection_mask_3 & selection_mask_2
+        polynomial_2 = Polynomial.fit(wavelength[selection_mask_4], flux[selection_mask_4], deg=poly2deg)
+        normalized_flux = flux / polynomial_2(wavelength)
 
     if plot:
         plt.figure(figsize=(16, 9))
-        plt.plot(wavelength, flux, '.', markersize=1)
+        plt.plot(wavelength, flux, '-', markersize=1)
         plt.plot(wavelength, filtered_flux)
         plt.plot(wavelength, polynomial_1(wavelength))
         plt.plot(wavelength, polynomial_2(wavelength))
@@ -391,6 +406,7 @@ def simple_normalizer(
                 handler_map={PathCollection: HandlerPathCollection(update_func=updatescatter),
                              plt.Line2D: HandlerLine2D(update_func=updateline)}
             )
+            plt.ylim([0.0, 1.05*np.max(flux[selection_mask_3])])
         else:
             plt.legend(
                 ['Flux', 'Median filtered flux', '3rd degree Polynomial', '4th degree polynomial'],
@@ -401,6 +417,14 @@ def simple_normalizer(
         plt.tight_layout()
         # plt.savefig('/home/sinkbaek/PycharmProjects/Seismic-dEBs/figures/report/RV/simple_normalizer/continuum_fit.png',
         #            dpi=400)
+
+        if reduce_em_lines:
+            plt.figure()
+            plt.plot(wavelength, normalized_flux, '-', label='Normalized flux')
+            plt.plot(wavelength, medians, 'k--', label='Median absolute deviation above 1')
+            plt.plot(wavelength, 2.5*stds + 1, '--', label='2.5 * 1.4826 * MAD')
+            plt.ylim(-0.05, 1+3.5*np.max(stds))
+            plt.legend()
 
         plt.show(block=True)
 

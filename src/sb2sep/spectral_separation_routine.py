@@ -461,7 +461,7 @@ def recalculate_RVs(
                                    shift_spectrum(1-separated_flux_B, RV_collection_B[i], delta_v)
 
                 if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
+                    if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                         corrected_flux_A = 1-flux_collection[:, i]
 
                 corrected_flux_A = corrected_flux_A[~buffer_mask]
@@ -497,7 +497,7 @@ def recalculate_RVs(
                                    shift_spectrum(1-separated_flux_A, RV_collection_A[i], delta_v)
 
                 if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
+                    if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                         corrected_flux_B = 1-flux_collection[:, i]
 
                 corrected_flux_B = corrected_flux_B[~buffer_mask]
@@ -652,7 +652,7 @@ def recalculate_RVs_orders(
                         corrected_flux_A = (1 - flux_collection_orders[:, j, i]) - \
                                            (1 - shift_spectrum(separated_flux_B, RV_collection_orders_B[j, i], delta_v))
                         if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                            if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
+                            if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                                 corrected_flux_A = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
                         fitparams_A = FitParameters(
@@ -680,7 +680,7 @@ def recalculate_RVs_orders(
                         corrected_flux_B = (1 - flux_collection_orders[:, j, i]) - \
                                            (1 - shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
                         if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                            if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
+                            if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                                 corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
                         fitparams_B = FitParameters(
@@ -773,7 +773,7 @@ def _rv_loop_orders(
                 corrected_flux_A = (1 - flux_collection_orders[:, j, i]) - \
                                    (1 - shift_spectrum(separated_flux_B, RV_collection_orders_B[j, i], delta_v))
                 if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
+                    if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                         corrected_flux_A = 1 - flux_collection_orders[:, j, i]
                 corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
 
@@ -801,7 +801,7 @@ def _rv_loop_orders(
                 corrected_flux_B = (1 - flux_collection_orders[:, j, i]) - \
                                    (1 - shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
                 if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
+                    if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                         corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                 corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
                 options.RV_B = RV_collection_orders_B[j, i]
@@ -844,16 +844,24 @@ def _rv_loop_orders(
     return RV_collection_orders_A[:, i], RV_collection_orders_B[:, i], (bf_fitres_A[:, i], bf_fitres_B[:, i])
 
 
-def _check_for_total_eclipse(time_value, period, eclipse_phase_area):
+def _check_for_eclipse(time_value, period, eclipse_phase_area):
     phase = np.mod(time_value, period)/period
-    lower = eclipse_phase_area[0]
-    upper = eclipse_phase_area[1]
-    if lower < upper:
-        condition = (phase > lower) & (phase < upper)
-    elif lower > upper:
-        condition = (phase > lower) | (phase < upper)
+    if isinstance(eclipse_phase_area, list):
+        ecl_list = eclipse_phase_area
     else:
-        raise ValueError('eclipse_phase_area must comprise of a lower and an upper value that are separate.')
+        ecl_list = [eclipse_phase_area]
+    condition = False
+    for i in range(len(ecl_list)):
+        lower = ecl_list[i][0]
+        upper = ecl_list[i][1]
+        if lower < upper:
+            cond = (phase > lower) & (phase < upper)
+        elif lower > upper:
+            cond = (phase > lower) | (phase < upper)
+        else:
+            raise ValueError('eclipse_phase_area must comprise of a lower and an upper value that are separate.')
+        if cond is True:
+            condition = True
     return condition
 
 
