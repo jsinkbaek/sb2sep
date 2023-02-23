@@ -198,13 +198,20 @@ def radial_velocity_single_component(
         fitting_routine = rbff.fitting_routine_rotational_broadening_profile
         get_fit_parameter_values = rbff.get_fit_parameter_values
     elif fitparams.fitting_profile == 'Gaussian':
-        fitting_routine = gf.fitting_routine_gaussian_profile
+        if fitparams.gui is False:
+            fitting_routine = gf.fitting_routine_gaussian_profile
+        else:
+            fitting_routine = gf.fitting_routine_gaussian_gui
         get_fit_parameter_values = gf.get_fit_parameter_values
     else:
         raise ValueError('Unrecognised fitting profile selected.')
-    fit, model_values = BFsvd.fit_rotational_profile(fitparams, fitting_routine)
+    fit_res = BFsvd.fit_rotational_profile(fitparams, fitting_routine)
+    fit, model_values = fit_res[0], fit_res[1]
 
     res = get_fit_parameter_values(fit.params)
     RV = res[1]
 
-    return RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth)
+    if len(fit_res) == 2:
+        return RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth)
+    else:       # Requested stop iteration and move to next spectrum
+        return RV, (fit, model_values, BFsvd.velocity, BFsvd.bf, BFsvd.bf_smooth), 0

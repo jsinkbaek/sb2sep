@@ -170,8 +170,18 @@ def fitting_routine_rotational_broadening_profile(
     )
     params.add('limbd_coef', value=fitparams.limbd_coef, vary=fitparams.vary_limbd_coef)
 
+    if fitparams.data_limits is not None:
+        mask_data = (velocities > fitparams.data_limits[0]) & (velocities < fitparams.data_limits[1])
+    elif fitparams.RV is not None:
+        mask_data = (velocities > fitparams.RV - fitparams.velocity_fit_width) & \
+                    (velocities < fitparams.RV + fitparams.velocity_fit_width)
+    else:
+        mask_data = (velocities > velocities[peak_idx]-fitparams.velocity_fit_width) & \
+                    (velocities < velocities[peak_idx]+fitparams.velocity_fit_width)
+
     fit = lmfit.minimize(
-        compare_func, params, args=(velocities, broadening_function_values, weight_function_values),
+        compare_func, params,
+        args=(velocities[mask_data], broadening_function_values[mask_data], weight_function_values[mask_data]),
         xtol=1E-8, ftol=1E-8, max_nfev=500
     )
     if print_report:

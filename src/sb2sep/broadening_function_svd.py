@@ -11,6 +11,7 @@ Some of the import statements lacking below are imported from rotational_broaden
 """
 
 import scipy.linalg as lg
+from scipy import sparse
 import warnings
 from sb2sep.rotational_broadening_function_fitting import *
 from sb2sep.storage_classes import FitParameters
@@ -19,7 +20,7 @@ from copy import copy
 
 
 class DesignMatrix:
-    def __init__(self, template_spectrum: np.ndarray, span: int):
+    def __init__(self, template_spectrum: np.ndarray, span: int, weights=None):
         """
         Creates a Design Matrix (DesignMatrix.mat) of a template spectrum for the SVD broadening function method.
         :param template_spectrum:   np.ndarray, flux of the template spectrum that design matrix should be made on.
@@ -35,9 +36,9 @@ class DesignMatrix:
         self.span = span
         self.n = self.vals.size
         self.m = self.span
-        self.mat = self.map()
+        self.mat = self.map(weights)
 
-    def map(self):
+    def map(self, weights=None):
         """
         Map stored spectrum to a design matrix.
         :return mat: np.ndarray, the created design matrix. Shape (m, n-m)
@@ -52,7 +53,10 @@ class DesignMatrix:
 
         mat = np.zeros(shape=(m, n-m+1))
         for i in range(0, m):
-            mat[i, :] = self.vals[i:i+n-m+1]
+            if weights is not None:
+                mat[i, :] = self.vals[i:i+n-m+1]*np.sqrt(weights[i:i+n-m+1])
+            else:
+                mat[i, :] = self.vals[i:i+n-m+1]
         return mat.T
 
 
@@ -136,7 +140,7 @@ class BroadeningFunction:
             self.svd = None
         self.bf = None
         self.bf_smooth = None
-        self.smooth_sigma = 5.0
+        self.smooth_sigma = 2.0*dv
         if ~copy:
             self.velocity = -np.arange(-int(span/2), int(span/2+1))*dv
         else:
@@ -241,10 +245,10 @@ class BroadeningFunction:
         if self.bf_smooth is None:
             raise TypeError('self.bf_smooth. self.smooth() must be run prior to fitting')
 
-        self.fit, self.model_values = fitting_routine(
+        fit_results = fitting_routine(
             self.velocity, self.bf_smooth, fitparams, self.smooth_sigma, self.dv
         )
-        return self.fit, self.model_values
+        return fit_results
 
 
 

@@ -163,6 +163,25 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
                 rv_options.fitting_profile = col1[index]
             else:
                 raise ValueError("RV options: Unrecognised fitting profile selected. Either use 'RotBF' or 'Gaussian'.")
+        elif value == 'center_on_system_rv_A':
+            if col1[index] == 'False':
+                rv_options.center_on_system_rv_A = False
+            else:
+                rv_options.center_on_system_rv_A = float(col1[index])
+        elif value == 'center_on_system_rv_B':
+            if col1[index] == 'False':
+                rv_options.center_on_system_rv_B = False
+            else:
+                rv_options.center_on_system_rv_B = float(col1[index])
+        elif value == 'vary_vsini_on_refit_A':
+            rv_options.vary_vsini_on_refit_A = eval(col1[index])
+        elif value == 'vary_vsini_on_refit_B':
+            rv_options.vary_vsini_on_refit_B = eval(col1[index])
+        elif value == 'delta_v_bf':
+            if col1[index] == 'None':
+                rv_options.delta_v_bf = None
+            else:
+                rv_options.delta_v_bf = float(col1[index])
         else:
             raise KeyError(f'RV options config file key {value} not supported.')
     return routine_options, sep_options, rv_options
@@ -183,13 +202,15 @@ class FitParameters:
             RV=None,
             continuum=0.0,
             vary_continuum=True,
-            fitting_profile='RotBF'
+            fitting_profile='RotBF',
+            gui=False
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini = vsini_guess
         self.vary_vsini = vary_vsini
         # Maximum change to vsini allowed each iteration in spectral_separation_routine()
         self.vsini_vary_limit = vsini_vary_limit
+        self.vsini_limits = None
         # Data resolution
         self.spectral_resolution = spectral_resolution
         # How far away to include data in fitting procedure (rotational broadening function profile also masks
@@ -198,8 +219,11 @@ class FitParameters:
         # Linear limb darkening coefficient for rotational broadening function profile fit
         self.limbd_coef = limbd_coef
         self.vary_limbd_coef = vary_limbd_coef
+        self.limbd_limits = None
         # Current RV values (used to update fit RV parameter limits correctly)
         self.RV = RV
+        self.RV_limits = None
+        self.data_limits = None
         # Smoothing value (in km/s) of the convolved gaussian used in broadening function SVD (bf_smooth()).
         self.bf_smooth_sigma = smooth_sigma
         # Width of the broadening function (in velocity space)
@@ -207,8 +231,12 @@ class FitParameters:
         # Continuum value, and whether to fit for it
         self.continuum = continuum
         self.vary_continuum = vary_continuum
+        self.continuum_limits = None
         # Fitting profile to use (either 'RotBF' or 'Gaussian'
         self.fitting_profile = fitting_profile
+        self.amplitude_limits = None
+        self.amplitude = None
+        self.gui = gui
 
 
 class RadialVelocityOptions:
@@ -245,7 +273,13 @@ class RadialVelocityOptions:
             n_parallel_jobs=1,
             evaluate_spectra_A=None,
             evaluate_spectra_B=None,
-            fitting_profile='RotBF'
+            fitting_profile='RotBF',
+            center_on_system_rv_A=False,
+            center_on_system_rv_B=False,
+            vary_vsini_on_refit_A=False,
+            vary_vsini_on_refit_B=False,
+            delta_v_bf=None,
+            fit_gui=False
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini_A = vsini_guess_A
@@ -306,6 +340,16 @@ class RadialVelocityOptions:
         self.evaluate_spectra_B = evaluate_spectra_B
 
         self.fitting_profile = fitting_profile
+
+        self.center_on_system_rv_A = center_on_system_rv_A
+        self.center_on_system_rv_B = center_on_system_rv_B
+
+        self.vary_vsini_on_refit_A = vary_vsini_on_refit_A
+        self.vary_vsini_on_refit_B = vary_vsini_on_refit_B
+
+        self.delta_v_bf = delta_v_bf
+
+        self.fit_gui = fit_gui
 
 
 class SeparateComponentsOptions:

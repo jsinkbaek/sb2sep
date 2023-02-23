@@ -10,6 +10,8 @@ from numpy.polynomial import Polynomial
 from matplotlib.collections import PathCollection
 from matplotlib.legend_handler import HandlerPathCollection, HandlerLine2D
 import matplotlib
+from scipy.ndimage import maximum_filter
+from scipy.ndimage import median_filter, uniform_filter1d, maximum_filter1d
 
 
 def load_template_spectrum(template_spectrum_path: str):
@@ -21,6 +23,21 @@ def load_template_spectrum(template_spectrum_path: str):
     return wavelength, flux
 
 
+def load_phoenix_template(template_spectrum_path: str, wave_ref_path: str):
+    with fits.open(template_spectrum_path) as hdul:
+        flux = hdul[0].data
+    with fits.open(wave_ref_path) as hdul:
+        wavelength = hdul[0].data
+    size = int(wavelength.size / 10000)
+    continuum = maximum_filter(flux, size=size)
+    norm_flux = flux / continuum
+    plt.figure()
+    plt.plot(wavelength, norm_flux)
+    plt.xlim([3000, 9000])
+    plt.show(block=True)
+    return wavelength, flux, norm_flux
+
+
 def load_program_spectrum(program_spectrum_path: str):
     with fits.open(program_spectrum_path) as hdul:
         hdr = hdul[0].header
@@ -28,8 +45,9 @@ def load_program_spectrum(program_spectrum_path: str):
         wl0, delta_wl = hdr['CRVAL1'], hdr['CDELT1']
         RA, DEC = hdr['OBJRA'], hdr['OBJDEC']
         date = hdr['DATE-AVG']
+        exptime = hdr['EXPTIME']
     wavelength = np.linspace(wl0, wl0 + delta_wl * flux.size, flux.size)
-    return wavelength, flux, date, RA, DEC
+    return wavelength, flux, date, RA, DEC, exptime
 
 
 def _resample_multiple_spectra(wavelength_template: np.ndarray, wavelength_list: list, flux_list: list):
@@ -333,26 +351,48 @@ def updateline(handle, orig):
     handle.set_markersize(12)
 
 
-def simple_normalizer(wavelength, flux, reduce_em_lines=True, plot=False):
+def simple_normalizer(
+        wavelength, flux, poly1deg=3, poly2deg=4, replace_negative=0.0, replace_non_finite=1.0,
+        reduce_em_lines=True, plot=False, return_em_mask=False
+):
     matplotlib.rcParams.update({'font.size': 20})
     filtered_flux = moving_median_filter(flux, flux.size//25)
 
     selection_mask_1 = flux/filtered_flux > 0.85
-    polynomial_1 = Polynomial.fit(wavelength[selection_mask_1], flux[selection_mask_1], deg=3)
+    polynomial_1 = Polynomial.fit(wavelength[selection_mask_1], flux[selection_mask_1], deg=poly1deg)
 
     selection_mask_2 = (flux/polynomial_1(wavelength) > 0.95) & (flux/polynomial_1(wavelength) < 1.1)
-    polynomial_2 = Polynomial.fit(wavelength[selection_mask_2], flux[selection_mask_2], deg=4)
+    polynomial_2 = Polynomial.fit(wavelength[selection_mask_2], flux[selection_mask_2], deg=poly2deg)
 
     normalized_flux = flux / polynomial_2(wavelength)
 
+    if replace_negative:
+        normalized_flux[normalized_flux <= 0] = replace_negative
+    if replace_non_finite:
+        normalized_flux[~np.isfinite(normalized_flux)] = replace_non_finite
+
     if reduce_em_lines:
-        std = np.std(normalized_flux[selection_mask_1])
-        mean = np.mean(normalized_flux[selection_mask_1])
-        selection_mask_3 = normalized_flux < mean + 2.5*std
+        wav_ = wavelength[selection_mask_1]
+        flu_ = normalized_flux[selection_mask_1]
+        selection_mask_3 = np.zeros(normalized_flux.size, dtype=bool)
+        stds = np.zeros(wavelength.size)
+        medians = np.zeros(wavelength.size)
+        for i in range(wavelength.size):
+            mask = (wav_ > wavelength[i]-250) & (wav_ < wavelength[i]+250) & (flu_ > 1.0)
+            flu_sel = flu_[mask]
+            median = np.median(flu_sel)
+            std = 1.4826 * (median-1.0)
+            stds[i] = std
+            medians[i] = median
+            if normalized_flux[i] < 1 + 2.5*std:
+                selection_mask_3[i] = True
+        selection_mask_4 = selection_mask_3 & selection_mask_2
+        polynomial_2 = Polynomial.fit(wavelength[selection_mask_4], flux[selection_mask_4], deg=poly2deg)
+        normalized_flux = flux / polynomial_2(wavelength)
 
     if plot:
         plt.figure(figsize=(16, 9))
-        plt.plot(wavelength, flux, '.', markersize=1)
+        plt.plot(wavelength, flux, '-', markersize=1)
         plt.plot(wavelength, filtered_flux)
         plt.plot(wavelength, polynomial_1(wavelength))
         plt.plot(wavelength, polynomial_2(wavelength))
@@ -367,6 +407,7 @@ def simple_normalizer(wavelength, flux, reduce_em_lines=True, plot=False):
                 handler_map={PathCollection: HandlerPathCollection(update_func=updatescatter),
                              plt.Line2D: HandlerLine2D(update_func=updateline)}
             )
+            plt.ylim([0.0, 1.05*np.max(flux[selection_mask_3])])
         else:
             plt.legend(
                 ['Flux', 'Median filtered flux', '3rd degree Polynomial', '4th degree polynomial'],
@@ -378,12 +419,143 @@ def simple_normalizer(wavelength, flux, reduce_em_lines=True, plot=False):
         # plt.savefig('/home/sinkbaek/PycharmProjects/Seismic-dEBs/figures/report/RV/simple_normalizer/continuum_fit.png',
         #            dpi=400)
 
+        if reduce_em_lines:
+            plt.figure()
+            plt.plot(wavelength, normalized_flux, '-', label='Normalized flux')
+            plt.plot(wavelength, medians, 'k--', label='Median absolute deviation above 1')
+            plt.plot(wavelength, 2.5*stds + 1, '--', label='2.5 * 1.4826 * MAD')
+            plt.ylim(-0.05, 1+3.5*np.max(stds))
+            plt.legend()
+
         plt.show(block=True)
 
     if reduce_em_lines:
+        if return_em_mask:
+            return wavelength[selection_mask_3], normalized_flux[selection_mask_3], selection_mask_3
         return wavelength[selection_mask_3], normalized_flux[selection_mask_3]
     else:
         return wavelength, normalized_flux
+
+
+def resample_and_normalize_all_spectra(
+        wavelength_collection_list: list, flux_collection_list: list, delta_v, plot=False,
+        wavelength_limits=None
+):
+    if wavelength_limits is not None:
+        wl_a, wl_b = wavelength_limits
+    else:
+        wl_a, wl_b = None, None
+    wavelength_grid, flux_collection = resample_multiple_spectra(
+        delta_v, (wavelength_collection_list, flux_collection_list), wavelength_a=wl_a, wavelength_b=wl_b,
+        resampled_len_even=True
+    )
+    flux_collection = flux_collection[0]
+
+    normalized_flux = normalize_all_resampled_with_combined_spectrum(
+        wavelength_grid, flux_collection, delta_v=delta_v, plot=plot
+    )
+    return wavelength_grid, normalized_flux
+
+
+def normalize_all_resampled_with_combined_spectrum(
+        wavelength_grid, flux_collection, replace_negative=True, replace_non_finite=1.0, plot=False, delta_v=1.0
+):
+    """
+    Adds all spectra together (without any RV correction) to make a template with high SN for the continuum.
+    Then applies a triple filtering procedure mean(median(max())) to capture the best guess for the average continuum.
+    After, it calculates individual corrections to each spectrum's continuum by mean(median()) filtering
+    flux/flux_combined.
+    """
+    flux_total = np.zeros_like(wavelength_grid)
+    for i in range(flux_collection.shape[1]):
+        flux_total += flux_collection[:, i]
+    flux_total /= flux_collection.shape[1]
+
+    # Calculate average continuum from the high-sn combined spectrum (with semi-random RVs)
+    _, normalized_total = simpler_normalizer(
+        wavelength_grid, flux_total, replace_negative, replace_non_finite, plot, delta_v
+    )
+    continuum_total = flux_total / normalized_total
+    continuum_correction = np.zeros_like(flux_collection)
+
+    # Measure lower order correction to each spectrum to adjust the average continuum
+    for i in range(flux_collection.shape[1]):
+        continuum_correction[:, i] = triangular_filter(flux_collection[:, i] / flux_total, flux_total.size // 25)
+    normalized_flux = flux_collection / (continuum_total * continuum_correction)
+
+    if plot:
+        for k in range(flux_collection.shape[1]):
+            plt.figure()
+            plt.plot(wavelength_grid, flux_collection[:, k])
+            plt.plot(wavelength_grid, (continuum_total * continuum_correction[:, k]))
+        plt.show()
+
+        for k in range(flux_collection.shape[1]):
+            plt.figure()
+            plt.plot(wavelength_grid, flux_collection[:, k] / (continuum_total * continuum_correction[:, k]))
+        plt.show()
+
+    return normalized_flux
+
+
+def triangular_filter(flux, window=51):
+    return uniform_filter1d(median_filter(flux, window, mode='reflect'), window, mode='reflect')
+
+
+def simpler_normalizer(wavelength, flux, replace_negative=True, replace_non_finite=1.0, plot=False, delta_v=1.0):
+    if isinstance(replace_negative, float):
+        flux[flux <= 0] = replace_negative
+    elif replace_negative is True:
+        flux[flux <= 0] = 0.001*np.min(np.abs(flux))
+
+    filtered_flux = double_filter(wavelength, flux, delta_v=delta_v)
+
+    normalized_flux = flux / filtered_flux
+
+    if replace_non_finite:
+        normalized_flux[~np.isfinite(normalized_flux)] = replace_non_finite
+
+    if plot:
+        plt.figure(figsize=(16, 9))
+        plt.plot(wavelength, flux, '-', markersize=1)
+        plt.plot(wavelength, filtered_flux)
+
+        plt.xlabel('Wavelength [Å]', fontsize=22)
+        plt.ylabel('Spectral Flux [e/s]', fontsize=22)
+        plt.legend(
+            ['Flux', 'Filtered flux'],
+            fontsize=20,
+            handler_map={PathCollection: HandlerPathCollection(update_func=updatescatter),
+                         plt.Line2D: HandlerLine2D(update_func=updateline)}
+        )
+        plt.tight_layout()
+
+        plt.show(block=True)
+
+    return wavelength, normalized_flux
+
+
+def double_filter(wavelength, flux, delta_v=1.0):
+    """
+    Performs a mean(median(max)) filtering.
+    """
+    nanmask = np.isnan(flux)
+    flux[nanmask] = interp1d(
+        wavelength[~nanmask], flux[~nanmask], fill_value="extrapolate", bounds_error=False
+    )(wavelength[nanmask])
+
+    wsize_max_kms = 400
+    wsize_triang_kms = 4000
+    wsize_max = int(wsize_max_kms / delta_v)
+    wsize_triang = int(wsize_triang_kms / delta_v)
+    if wsize_triang % 2 == 0:
+        wsize_triang += 1
+    if wsize_max % 2 == 0:
+        wsize_max += 1
+    maxy = maximum_filter1d(flux, wsize_max)
+    filtered_flux = triangular_filter(maxy, wsize_triang)
+
+    return filtered_flux
 
 
 def save2col(column1: np.ndarray, column2: np.ndarray, filename: str):

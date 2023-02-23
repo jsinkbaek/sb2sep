@@ -13,20 +13,19 @@ same author. Both follows the formula layout of the article:
 """
 import matplotlib.pyplot as plt
 
-from sb2sep.calculate_radial_velocities import radial_velocity_single_component
-from sb2sep.broadening_function_svd import *
-from sb2sep.storage_classes import FitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
+from .calculate_radial_velocities import radial_velocity_single_component
+from .broadening_function_svd import *
+from .storage_classes import FitParameters, SeparateComponentsOptions, RadialVelocityOptions, \
     RoutineOptions
-import sb2sep.spectrum_processing_functions as spf
+from . import spectrum_processing_functions as spf
 import numpy as np
 from copy import deepcopy
 from joblib import Parallel, delayed
-import matplotlib
-import sb2sep.broadening_function_svd as bfsvd
 # from scipy.interpolate import interp1d
 import scipy.constants as scc
 from matplotlib.backends.backend_pdf import PdfPages
 from copy import copy
+from pprint import pprint
 
 
 def shift_spectrum(flux, radial_velocity_shift, delta_v):
@@ -354,7 +353,10 @@ def _update_bf_plot(plot_ax, model, RV_actual, index):
     model_values = model[1]
     velocity_values = model[2]
     bf_smooth_values = model[4]
-    RV_measured = fit.params['radial_velocity_cm'].value
+    try:
+        RV_measured = fit.params['radial_velocity_cm'].value
+    except KeyError:
+        RV_measured = fit.params['center'].value
     # _, RV_measured, _, _, _, _ = get_fit_parameter_values(fit.params)
     RV_offset = RV_actual - RV_measured
     plot_ax.plot(velocity_values + RV_offset, 1+0.02*bf_smooth_values/np.max(bf_smooth_values)-0.05*index)
@@ -398,14 +400,15 @@ def recalculate_RVs(
     n_spectra = flux_collection[0, :].size
     v_span = options.bf_velocity_span
     delta_v = options.delta_v
+    delta_v_bf = delta_v if options.delta_v_bf is None else options.delta_v_bf
 
     if plot_ax_A is not None:
         plot_ax_A.clear()
-        plot_ax_A.set_xlim([-v_span/2, +v_span/2])
+        plot_ax_A.set_xlim([-v_span, +v_span])
         plot_ax_A.set_xlabel('Velocity shift [km/s]')
     if plot_ax_B is not None:
         plot_ax_B.clear()
-        plot_ax_B.set_xlim([-v_span/2, +v_span/2])
+        plot_ax_B.set_xlim([-v_span, +v_span])
         plot_ax_B.set_xlabel('Velocity shift [km/s]')
 
     bf_fitres_A = np.empty(shape=(n_spectra,), dtype=tuple)
@@ -417,11 +420,16 @@ def recalculate_RVs(
         vary_continuum = True
         continuum_A = 0.0
         continuum_B = 0.0
+        vsini_A = options.vsini_A
+        vsini_B = options.vsini_B
+        vary_vsini_A = options.vary_vsini_A
+        vary_vsini_B = options.vary_vsini_B
         if options.refit_width_A is not None or options.refit_width_B is not None:
             krange = 2
         else:
             pass
         for k in range(0, krange):       # perform "burn-in" with wide fit-width, and then refit only with peak data
+                                         # (if selected)
             if k == 0:
                 fit_width_A = copy(options.velocity_fit_width_A)
                 fit_width_B = copy(options.velocity_fit_width_B)
@@ -433,6 +441,16 @@ def recalculate_RVs(
                 # resb = get_fit_parameter_values(model_B[0].params)
                 continuum_A = model_A[0].params['continuum_constant'].value
                 continuum_B = model_B[0].params['continuum_constant'].value
+                vsini_A = model_A[0].params['vsini'].value
+                vsini_B = model_B[0].params['vsini'].value
+                if options.vary_vsini_on_refit_A:
+                    vary_vsini_A = True
+                else:
+                    vary_vsini_A = False
+                if options.vary_vsini_on_refit_B:
+                    vary_vsini_B = True
+                else:
+                    vary_vsini_B = False
 
             iterations = 0
             while True:
@@ -443,66 +461,88 @@ def recalculate_RVs(
                                    shift_spectrum(1-separated_flux_B, RV_collection_B[i], delta_v)
 
                 if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
+                    if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                         corrected_flux_A = 1-flux_collection[:, i]
 
                 corrected_flux_A = corrected_flux_A[~buffer_mask]
 
                 # Generate fit parameter object
+                rv0 = -options.center_on_system_rv_A if options.center_on_system_rv_A else -RV_collection_A[i]
                 fitparams_A = FitParameters(
-                    options.vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
-                    options.bf_smooth_sigma_A, options.bf_velocity_span, options.vary_vsini_A,
-                    options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=0.0, continuum=continuum_A,
-                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile
+                    vsini_A, options.spectral_resolution, options.velocity_fit_width_A, options.limbd_coef_A,
+                    options.bf_smooth_sigma_A, options.bf_velocity_span, vary_vsini_A,
+                    options.vsini_vary_limit_A, options.vary_limbd_coef_A, RV=rv0+RV_collection_A[i],
+                    continuum=continuum_A,
+                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile,
+                    gui=options.fit_gui
                 )
 
                 # Perform calculation
-                template_shifted = shift_spectrum(flux_templateA, RV_collection_A[i], delta_v)
+                template_shifted = shift_spectrum(flux_templateA, -rv0, delta_v)
                 BRsvd_template_A = BroadeningFunction(  # observation flux is changed to corrected_flux_A later
-                    corrected_flux_A, 1 - template_shifted[~buffer_mask], v_span, delta_v
+                    corrected_flux_A, 1 - template_shifted[~buffer_mask], v_span, delta_v_bf
                 )
                 BRsvd_template_A.smooth_sigma = options.bf_smooth_sigma_A
-                RV_deviation_A, model_A = radial_velocity_single_component(
+                rvsc_res_A = radial_velocity_single_component(
                     corrected_flux_A, BRsvd_template_A, fitparams_A
                 )
-                RV_collection_A[i] = RV_collection_A[i] + RV_deviation_A
+                RV_deviation_A, model_A = rvsc_res_A[0], rvsc_res_A[1]
+
+                # RV_collection_A[i] = RV_collection_A[i] + RV_deviation_A
+                rvdev_A = RV_deviation_A -RV_collection_A[i]-rv0
+                RV_collection_A[i] = RV_deviation_A - rv0
 
                 # # Calculate RV_B # #
                 corrected_flux_B = (1-flux_collection[:, i]) - \
                                    shift_spectrum(1-separated_flux_A, RV_collection_A[i], delta_v)
 
                 if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
+                    if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                         corrected_flux_B = 1-flux_collection[:, i]
 
                 corrected_flux_B = corrected_flux_B[~buffer_mask]
 
+                rv0 = -options.center_on_system_rv_B if options.center_on_system_rv_B else -RV_collection_B[i]
                 fitparams_B = FitParameters(
-                    options.vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
-                    options.bf_smooth_sigma_B, options.bf_velocity_span, options.vary_vsini_B,
-                    options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=0.0, continuum=continuum_B,
-                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile
+                    vsini_B, options.spectral_resolution, options.velocity_fit_width_B, options.limbd_coef_B,
+                    options.bf_smooth_sigma_B, options.bf_velocity_span, vary_vsini_B,
+                    options.vsini_vary_limit_B, options.vary_limbd_coef_B, RV=rv0+RV_collection_B[i],
+                    continuum=continuum_B,
+                    vary_continuum=vary_continuum, fitting_profile=options.fitting_profile,
+                    gui=options.fit_gui
                 )
-                template_shifted = shift_spectrum(flux_templateB, RV_collection_B[i], delta_v)
+                template_shifted = shift_spectrum(flux_templateB, -rv0, delta_v)
                 BRsvd_template_B = BroadeningFunction(
-                    corrected_flux_B, 1 - template_shifted[~buffer_mask], v_span, delta_v
+                    corrected_flux_B, 1 - template_shifted[~buffer_mask], v_span, delta_v_bf
                 )
                 BRsvd_template_B.smooth_sigma = options.bf_smooth_sigma_B
-                RV_deviation_B, model_B = radial_velocity_single_component(
+                rvsc_res_B = radial_velocity_single_component(
                     corrected_flux_B, BRsvd_template_B, fitparams_B
                 )
-                RV_collection_B[i] = RV_collection_B[i] + RV_deviation_B
+                RV_deviation_B, model_B = rvsc_res_B[0], rvsc_res_B[1]
+
+                # RV_collection_B[i] = RV_collection_B[i] + RV_deviation_B
+                rvdev_B = RV_deviation_B-RV_collection_B[i]-rv0
+                RV_collection_B[i] = RV_deviation_B - rv0
                 if options.verbose:
                     print(
-                        f'RV dev spec {i}: {np.abs(RV_deviation_A):.{options.print_prec}f} (A) '
-                        f'{np.abs(RV_deviation_B):.{options.print_prec}f} (B)'
+                        f'RV dev spec {i}: {np.abs(rvdev_A):.{options.print_prec}f} (A) '
+                        f'{np.abs(rvdev_B):.{options.print_prec}f} (B)'
                     )
-                if (np.abs(RV_deviation_A) < options.convergence_limit or i not in options.evaluate_spectra_A) and \
-                        (np.abs(RV_deviation_B) < options.convergence_limit or i not in options.evaluate_spectra_B):
+                    # Debug plots
+                    # plt.figure()
+                    # plt.plot(model_A[2], model_A[4], 'k-')
+                    # plt.plot(model_A[2], model_A[1], 'r--')
+                    # plt.figure()
+                    # plt.plot(model_B[2], model_B[4], 'k-')
+                    # plt.plot(model_B[2], model_B[1], 'b--')
+                    # plt.show(block=True)
+                if (np.abs(rvdev_A) < options.convergence_limit or i not in options.evaluate_spectra_A) and \
+                        (np.abs(rvdev_B) < options.convergence_limit or i not in options.evaluate_spectra_B):
                     if options.verbose:
-                        print(f'RV: spectrum {i} successful.')
+                        print(f'RV: spectrum {i} converged.')
                     break
-                elif iterations > options.iteration_limit:
+                elif iterations >= options.iteration_limit or len(rvsc_res_A) + len(rvsc_res_B) == 6:
                     if k == 1 and options.verbose is True:
                         warnings.warn(
                             f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'
@@ -612,7 +652,7 @@ def recalculate_RVs_orders(
                         corrected_flux_A = (1 - flux_collection_orders[:, j, i]) - \
                                            (1 - shift_spectrum(separated_flux_B, RV_collection_orders_B[j, i], delta_v))
                         if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                            if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
+                            if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                                 corrected_flux_A = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
                         fitparams_A = FitParameters(
@@ -640,7 +680,7 @@ def recalculate_RVs_orders(
                         corrected_flux_B = (1 - flux_collection_orders[:, j, i]) - \
                                            (1 - shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
                         if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                            if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
+                            if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                                 corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                         corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
                         fitparams_B = FitParameters(
@@ -680,7 +720,6 @@ def recalculate_RVs_orders(
                                     f'RV: spectrum {i} did not reach convergence limit {options.convergence_limit}.'
                                 )
                         break
-
             rv_lower_limit = options.rv_lower_limit
             if plot_ax_A is not None:
                 _update_bf_plot(plot_ax_A, bf_fitres_A[plot_order, i], RV_collection_orders_A[plot_order, i], i)
@@ -734,7 +773,7 @@ def _rv_loop_orders(
                 corrected_flux_A = (1 - flux_collection_orders[:, j, i]) - \
                                    (1 - shift_spectrum(separated_flux_B, RV_collection_orders_B[j, i], delta_v))
                 if period is not None and options.ignore_at_phase_B is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
+                    if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_B) is True:
                         corrected_flux_A = 1 - flux_collection_orders[:, j, i]
                 corrected_flux_A = corrected_flux_A[mask_collection_orders[:, j, i]]
 
@@ -762,7 +801,7 @@ def _rv_loop_orders(
                 corrected_flux_B = (1 - flux_collection_orders[:, j, i]) - \
                                    (1 - shift_spectrum(separated_flux_A, RV_collection_orders_A[j, i], delta_v))
                 if period is not None and options.ignore_at_phase_A is not None and time_values is not None:
-                    if _check_for_total_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
+                    if _check_for_eclipse(time_values[i], period, options.ignore_at_phase_A) is True:
                         corrected_flux_B = 1 - flux_collection_orders[:, j, i]
                 corrected_flux_B = corrected_flux_B[mask_collection_orders[:, j, i]]
                 options.RV_B = RV_collection_orders_B[j, i]
@@ -805,16 +844,24 @@ def _rv_loop_orders(
     return RV_collection_orders_A[:, i], RV_collection_orders_B[:, i], (bf_fitres_A[:, i], bf_fitres_B[:, i])
 
 
-def _check_for_total_eclipse(time_value, period, eclipse_phase_area):
+def _check_for_eclipse(time_value, period, eclipse_phase_area):
     phase = np.mod(time_value, period)/period
-    lower = eclipse_phase_area[0]
-    upper = eclipse_phase_area[1]
-    if lower < upper:
-        condition = (phase > lower) & (phase < upper)
-    elif lower > upper:
-        condition = (phase > lower) | (phase < upper)
+    if isinstance(eclipse_phase_area, list):
+        ecl_list = eclipse_phase_area
     else:
-        raise ValueError('eclipse_phase_area must comprise of a lower and an upper value that are separate.')
+        ecl_list = [eclipse_phase_area]
+    condition = False
+    for i in range(len(ecl_list)):
+        lower = ecl_list[i][0]
+        upper = ecl_list[i][1]
+        if lower < upper:
+            cond = (phase > lower) & (phase < upper)
+        elif lower > upper:
+            cond = (phase > lower) | (phase < upper)
+        else:
+            raise ValueError('eclipse_phase_area must comprise of a lower and an upper value that are separate.')
+        if cond is True:
+            condition = True
     return condition
 
 
@@ -1093,8 +1140,8 @@ def spectral_separation_routine(
                         vsini_A[j, i] = bf_fitres_A[j, i][0].params['vsini'].value
                         vsini_B[j, i] = bf_fitres_B[j, i][0].params['vsini'].value
                     elif rv_options.fitting_profile == 'Gaussian':
-                        vsini_A[j, i] = bf_fitres_A[j, i][0].params['gaussian_sigma'].value
-                        vsini_B[j, i] = bf_fitres_B[j, i][0].params['gaussian_sigma'].value
+                        vsini_A[j, i] = bf_fitres_A[j, i][0].params['sigma'].value
+                        vsini_B[j, i] = bf_fitres_B[j, i][0].params['sigma'].value
                     else:
                         raise ValueError('Unknown fitting profile selected.')
         else:
@@ -1103,16 +1150,16 @@ def spectral_separation_routine(
                     vsini_A[i] = bf_fitres_A[i][0].params['vsini'].value
                     vsini_B[i] = bf_fitres_B[i][0].params['vsini'].value
                 elif rv_options.fitting_profile == 'Gaussian':
-                    vsini_A[i] = bf_fitres_A[i][0].params['gaussian_sigma'].value
-                    vsini_B[i] = bf_fitres_B[i][0].params['gaussian_sigma'].value
+                    vsini_A[i] = bf_fitres_A[i][0].params['sigma'].value
+                    vsini_B[i] = bf_fitres_B[i][0].params['sigma'].value
                 else:
                     raise ValueError('Unknown fitting profile selected.')
         if options.adjust_vsini is True:
             rv_options.vsini_A = np.mean(vsini_A)
             rv_options.vsini_B = np.mean(vsini_B)
         if options.verbose:
-            print('vsini A: ', rv_options.vsini_A)
-            print('vsini B: ', rv_options.vsini_B)
+            print('Avg vsini A: ', np.mean(vsini_A))
+            print('Avg vsini B: ', np.mean(vsini_B))
 
         iterations += 1
         if RV_collection_A.ndim == 2:
