@@ -228,7 +228,6 @@ if False:
     flux_template_B = np.convolve(flux_template_B, gaussian, mode='same')
 
 
-
 # # Perform barycentric corrections # #
 for i in range(0, flux_collection[0, :].size):
     flux_collection[:, i] = ssr.shift_spectrum(

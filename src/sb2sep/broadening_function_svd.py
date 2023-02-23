@@ -93,8 +93,7 @@ class BroadeningFunction:
             template_spectrum: np.ndarray,
             velocity_span: float,
             dv: float,
-            span=None, copy=False, plot_w=False,
-            weights=None
+            span=None, copy=False, plot_w=False
     ):
         """
         Creates a broadening function object storing all the necessary variables for it.
@@ -141,7 +140,7 @@ class BroadeningFunction:
             self.svd = None
         self.bf = None
         self.bf_smooth = None
-        self.smooth_sigma = 5.0
+        self.smooth_sigma = 2.0*dv
         if ~copy:
             self.velocity = -np.arange(-int(span/2), int(span/2+1))*dv
         else:

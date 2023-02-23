@@ -28,6 +28,10 @@ import warnings
 matplotlib.rcParams.update({'font.size': 25})
 
 
+def moving_average(yvals, w):
+    return np.convolve(yvals, np.ones(w), 'same') / w
+
+
 ##################### VARIABLES AND OPTIONS FOR SCRIPT ##############################3
 warnings.filterwarnings("ignore", category=UserWarning)
 # plt.ion()
@@ -240,10 +244,16 @@ wl_lum, lum_ratio = np.loadtxt('Data/kic10001167_lumratio.txt', unpack=True)
 lum_ratio = np.interp(wavelength, wl_lum, lum_ratio)
 separated_flux_A = separated_flux_A * (1 + lum_ratio) - lum_ratio
 separated_flux_B = separated_flux_B * (1 + 1/lum_ratio) - 1/lum_ratio
+separated_flux_B_avg = np.copy(separated_flux_B)
+# separated_flux_B_avg[separated_flux_B_avg > 2.0] = 1.0
+# separated_flux_B_avg[separated_flux_B_avg < 0.0] = 1.0
+separated_flux_B_avg = moving_average(separated_flux_B_avg, 10)
+print(wavelength.size)
 plt.figure()
 plt.plot(wavelength, separated_flux_A)
+plt.plot(wavelength, ssr.shift_spectrum(flux_collection[:, 5], -RV_collection[5, 0], delta_v) * (1 + lum_ratio) - lum_ratio)
 plt.figure()
-plt.plot(wavelength, separated_flux_B)
+plt.plot(wavelength, separated_flux_B_avg)
 np.savetxt('results/separated_spectrum/sep_flux.txt', np.array([wavelength, separated_flux_A, separated_flux_B]).T, header='Wavelength\tSpectrum Giant\tSpectrum MS')
 plt.show()
 

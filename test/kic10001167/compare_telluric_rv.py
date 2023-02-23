@@ -129,21 +129,28 @@ print(flux_collection.shape)
 mean_flux = np.sum(flux_collection, axis=1) / flux_collection.shape[1]
 
 from lyskryds.krydsorden import getCCF, getRV
+rvs_combined = np.zeros(flux_collection.shape[1])
+for k in range(3):
+    plt.figure()
+    if k != 0:
+        for i in range(flux_collection.shape[1]):
+            flux_collection[:, i] = ssr.shift_spectrum(flux_collection[:, i], -rvs[i], delta_v)
+    rvs = []
+    errs = []
+    for i in range(flux_collection.shape[1]):
+        vel, ccf = getCCF(1 - flux_collection[:, i], 1 - mean_flux, rvr=71)
+        rv, err = getRV(vel, ccf, poly=False, new=True, zucker=False)
+        label = f'{files_science[i][:6]}  {rv:.3f} km/s'
+        plt.plot(vel, ccf / np.max(ccf) - i, label=label)
+        plt.plot([rv, rv], [-i, 1 - i], 'k--')
+        rvs.append(rv)
+        errs.append(err)
+    rvs_combined += rvs
+    plt.xlabel('Velocity [km/s]')
+    plt.yticks([])
+    plt.legend()
+    print(np.array([rvs, errs]).T)
+    np.savetxt(f'tell_rv_{k}.txt', rvs)
+    np.savetxt(f'tell_rv_tot.txt', rvs_combined)
 
-plt.figure()
-rvs = []
-errs = []
-for i in range(flux_collection.shape[1]):
-    vel, ccf = getCCF(1-flux_collection[:, i], 1-mean_flux, rvr=71)
-    rv, err = getRV(vel, ccf, poly=False, new=True, zucker=False)
-    label = f'{files_science[i][:6]}  {rv:.3f} km/s'
-    plt.plot(vel, ccf/np.max(ccf)-i, label=label)
-    plt.plot([rv, rv], [-i, 1-i], 'k--')
-    rvs.append(rv)
-    errs.append(err)
-plt.xlabel('Velocity [km/s]')
-plt.yticks([])
-plt.legend()
-print(np.array([rvs, errs]).T)
-# np.savetxt('tell_rv.txt', rvs)
 plt.show()
