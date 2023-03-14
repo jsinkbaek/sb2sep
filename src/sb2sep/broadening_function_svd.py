@@ -20,7 +20,7 @@ from copy import copy
 
 
 class DesignMatrix:
-    def __init__(self, template_spectrum: np.ndarray, span: int, weights=None):
+    def __init__(self, template_spectrum: np.ndarray, span: int):
         """
         Creates a Design Matrix (DesignMatrix.mat) of a template spectrum for the SVD broadening function method.
         :param template_spectrum:   np.ndarray, flux of the template spectrum that design matrix should be made on.
@@ -36,9 +36,9 @@ class DesignMatrix:
         self.span = span
         self.n = self.vals.size
         self.m = self.span
-        self.mat = self.map(weights)
+        self.mat = self.map()
 
-    def map(self, weights=None):
+    def map(self):
         """
         Map stored spectrum to a design matrix.
         :return mat: np.ndarray, the created design matrix. Shape (m, n-m)
@@ -53,10 +53,7 @@ class DesignMatrix:
 
         mat = np.zeros(shape=(m, n-m+1))
         for i in range(0, m):
-            if weights is not None:
-                mat[i, :] = self.vals[i:i+n-m+1]*np.sqrt(weights[i:i+n-m+1])
-            else:
-                mat[i, :] = self.vals[i:i+n-m+1]
+            mat[i, :] = self.vals[i:i+n-m+1]
         return mat.T
 
 
@@ -185,7 +182,7 @@ class BroadeningFunction:
         if truncated_spectrum.size != spectrum.size - m + 1:
             print(truncated_spectrum.size)
             raise ValueError('bf truncate spectrum: Wrong length')
-        return truncated_spectrum      # Found error in some cases with length. Should be fixed now
+        return truncated_spectrum
 
     def solve(self):
         """

@@ -287,7 +287,6 @@ def moving_median_filter(flux: np.ndarray, window=51):
     :param window:      integer, size of moving median filter
     :return:            filtered_flux, np.ndarray size (n, )
     """
-    from scipy.ndimage import median_filter
     return median_filter(flux, size=window, mode='reflect')
 
 
@@ -458,7 +457,8 @@ def resample_and_normalize_all_spectra(
 
 
 def normalize_all_resampled_with_combined_spectrum(
-        wavelength_grid, flux_collection, replace_negative=True, replace_non_finite=1.0, plot=False, delta_v=1.0
+        wavelength_grid, flux_collection, replace_negative=True, replace_non_finite=1.0, plot=False, delta_v=1.0,
+        reduce_em_lines=True
 ):
     """
     Adds all spectra together (without any RV correction) to make a template with high SN for the continuum.
@@ -479,23 +479,59 @@ def normalize_all_resampled_with_combined_spectrum(
     continuum_correction = np.zeros_like(flux_collection)
 
     # Measure lower order correction to each spectrum to adjust the average continuum
+    continuum_local = np.empty_like(continuum_correction)
     for i in range(flux_collection.shape[1]):
         continuum_correction[:, i] = triangular_filter(flux_collection[:, i] / flux_total, flux_total.size // 25)
-    normalized_flux = flux_collection / (continuum_total * continuum_correction)
+        continuum_local[:, i] = continuum_total * continuum_correction[:, i]
+    normalized_flux = flux_collection / continuum_local
+
+    mask_emlines = np.zeros_like(normalized_flux, dtype=bool)
+    if reduce_em_lines:     # Find strong emission lines relative to local error estimate
+        for i in range(flux_collection.shape[1]):
+            error, _ = error_proxy_fast(wavelength_grid, normalized_flux[:, i], delta_v=delta_v)
+            mask_emlines[:, i] = normalized_flux[:, i] > 5*error+1.0
 
     if plot:
         for k in range(flux_collection.shape[1]):
             plt.figure()
             plt.plot(wavelength_grid, flux_collection[:, k])
             plt.plot(wavelength_grid, (continuum_total * continuum_correction[:, k]))
+            plt.plot(wavelength_grid[mask_emlines[:, k]], flux_collection[mask_emlines[:, k], k], 'r*')
         plt.show()
 
         for k in range(flux_collection.shape[1]):
             plt.figure()
-            plt.plot(wavelength_grid, flux_collection[:, k] / (continuum_total * continuum_correction[:, k]))
+            plt.plot(wavelength_grid, normalized_flux[:, k])
+            plt.plot(wavelength_grid[mask_emlines[:, k]], normalized_flux[mask_emlines[:, k], k], 'r*')
+        plt.show()
+
+    if reduce_em_lines:     # Replace em line values with interpolated
+        for i in range(flux_collection.shape[1]):
+            normalized_flux[mask_emlines[:, i], i] = interp1d(
+                wavelength_grid[~mask_emlines[:, i]], normalized_flux[~mask_emlines[:, i], i],
+                bounds_error=False, fill_value='extrapolate'
+            )(wavelength_grid[mask_emlines[:, i]])
+            plt.figure()
+            plt.plot(wavelength_grid, normalized_flux[:, i])
         plt.show()
 
     return normalized_flux
+
+
+def error_proxy_fast(wavelength, flux, width_kms=4001, delta_v=1.0):
+    mask = (flux > 1.0)
+    flux__ = np.copy(flux)
+    flux__[~mask] = interp1d(
+        wavelength[mask], flux[mask], bounds_error=False, fill_value="extrapolate"
+    )(wavelength[~mask])
+
+    wsize = int(width_kms / delta_v)
+    if wsize % 2 == 0:
+        wsize += 1
+
+    mad = moving_median_filter(flux__, wsize)
+    sigma = 1.4826 * (mad - 1.0)
+    return sigma, mad
 
 
 def triangular_filter(flux, window=51):

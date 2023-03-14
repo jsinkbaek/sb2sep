@@ -10,7 +10,7 @@ convergence_limit 1E-5		# Convergence criteria for RMS of radial velocities need
 
 iteration_limit 3		# Maximum allowed iterations of parent routine before automatic exit.
 
-plot True			    # If True, diagnostic plots are shown and updated between iterations.
+plot False			    # If True, diagnostic plots are shown and updated between iterations.
 
 verbose True			# Indicates if parent routine should print extra updates to console.
 

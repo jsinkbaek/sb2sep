@@ -28,6 +28,10 @@ import warnings
 matplotlib.rcParams.update({'font.size': 25})
 
 
+def moving_average(yvals, w):
+    return np.convolve(yvals, np.ones(w), 'same') / w
+
+
 ##################### VARIABLES AND OPTIONS FOR SCRIPT ##############################3
 warnings.filterwarnings("ignore", category=UserWarning)
 # plt.ion()
@@ -44,6 +48,7 @@ files_science = [
     'FIEh060100_step012_merge.fits', 'FIBj010039_step011_merge.fits', 'FIBk030040_step011_merge.fits',
     'FIBk140072_step011_merge.fits', 'FIDh100076_step011_merge.fits', 'FIBk040034_step011_merge.fits',
     'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits',
+    # NEW SPECTRA BELOW
     'FIGb130102_step011_merge.fits', 'FIGb200113_step011_merge.fits', 'FIGb260120_step011_merge.fits',
     'FIGc030078_step011_merge.fits'
 ]
@@ -66,32 +71,28 @@ folder_science = '/home/sinkbaek/Data/KIC10001167/'
 #     'FIFj100096_step011_merge.fits'
 # ])
 
-use_for_spectral_separation = np.array(['FIDg060105_step011_merge.fits', 'FIDh200065_step011_merge.fits',
-       'FIEh190105_step011_merge.fits', 'FIDh150097_step011_merge.fits',
-       'FIBl050130_step011_merge.fits', 'FIEh020096_step012_merge.fits',
-       'FIBk050060_step011_merge.fits', 'FIDg070066_step011_merge.fits',
-       'FIDg080034_step011_merge.fits', 'FIBl080066_step011_merge.fits',
-       'FIDg050102_step011_merge.fits', 'FIDh170096_step011_merge.fits',
-       'FIDh160097_step011_merge.fits', 'FIBi240077_step011_merge.fits',
-       'FIBi230039_step011_merge.fits', 'FIBi240074_step011_merge.fits',
-       'FIBk060008_step011_merge.fits', 'FIFj100096_step011_merge.fits',
-       'FIEh060100_step012_merge.fits', 'FIBk030040_step011_merge.fits',
-       'FIBk140072_step011_merge.fits', 'FIDh100076_step011_merge.fits',
-       'FIBk040034_step011_merge.fits', 'FIEf140066_step011_merge.fits',
-       # 'FIBj150077_step011_merge.fits'
-                                        ])
+use_for_spectral_separation = np.array([
+    'FIDg060105_step011_merge.fits', 'FIDh200065_step011_merge.fits',
+    'FIEh190105_step011_merge.fits', 'FIDh150097_step011_merge.fits',
+    'FIBl050130_step011_merge.fits', 'FIEh020096_step012_merge.fits',
+    'FIBk050060_step011_merge.fits', 'FIDg070066_step011_merge.fits',
+    'FIDg080034_step011_merge.fits', 'FIBl080066_step011_merge.fits',
+    'FIDg050102_step011_merge.fits', 'FIDh170096_step011_merge.fits',
+    'FIDh160097_step011_merge.fits', 'FIBi240077_step011_merge.fits',
+    'FIBi230039_step011_merge.fits', 'FIBi240074_step011_merge.fits',
+    'FIBk060008_step011_merge.fits', 'FIFj100096_step011_merge.fits',
+    'FIEh060100_step012_merge.fits', 'FIBk030040_step011_merge.fits',
+    'FIBk140072_step011_merge.fits', 'FIDh100076_step011_merge.fits',
+    'FIBk040034_step011_merge.fits', 'FIEf140066_step011_merge.fits',
+    'FIBj150077_step011_merge.fits'
+])
 observatory_location = EarthLocation.of_site("Roque de los Muchachos")
 observatory_name = "Roque de los Muchachos"
 stellar_target = "kic10001167"
 wavelength_normalization_limit = (4315, 7000)   # Ångström, limit to data before performing continuum normalization
-wavelength_RV_limit = (4315, 7000)              # Ångström, the area used after normalization
-wavelength_buffer_size = 8.0                     # Ångström, padding included at ends of spectra. Useful when doing
+wavelength_RV_limit = (4400, 5825)              # Ångström, the area used after normalization
+wavelength_buffer_size = 10.0                     # Ångström, padding included at ends of spectra. Useful when doing
                                                 # wavelength shifts with np.roll()
-wavelength_intervals_full = [(4400, 5825)]      # Ångström, the actual interval used.
-wavelength_intervals = [                        # Intervals used for error calculation
-    (4400, 4690), (4690, 4980), (4980, 5270), (5270, 5560), (5560, 5850),
-    (5985, 6275), (6565, 6840)
-]
 delta_v = 1.0         # interpolation sampling resolution for spectrum in km/s
 
 system_RV_estimate = -103.40          # to subtract before routine
@@ -111,7 +112,7 @@ routine_options, sep_comp_options, rv_options = load_configuration_files(
 rv_options.fit_gui = False
 
 limbd_A = estimate_linear_limbd(wavelength_RV_limit, 2.2, 4700, -0.7, 0.9, loc='Data/tables/atlasco.dat')
-limbd_B = estimate_linear_limbd(wavelength_RV_limit, 4.4, 6000, -0.7, 2.0, loc='Data/tables/atlasco.dat')
+limbd_B = estimate_linear_limbd(wavelength_RV_limit, 4.4, 5700, -0.7, 2.0, loc='Data/tables/atlasco.dat')
 print('limb A: ', limbd_A)
 print('limb B: ', limbd_B)
 rv_options.limbd_coef_A = limbd_A
@@ -165,12 +166,11 @@ else:
     np.save('temp/wavelength.npy', wavelength)
     np.save('temp/flux_normalized.npy', flux_collection)
 
-sep_comp_options.weights = np.sqrt(expt_array) / np.sqrt(np.max(expt_array))
-print(sep_comp_options.weights)
 
-print(sep_comp_options.use_for_spectral_separation_A)
-print(sep_comp_options.use_for_spectral_separation_B)
-print(rv_options.ignore_at_phase_B)
+sep_comp_options.use_for_spectral_separation_A = spectral_separation_array_A        # see notes earlier
+sep_comp_options.use_for_spectral_separation_B = spectral_separation_array_B
+
+sep_comp_options.weights = np.sqrt(expt_array) / np.sqrt(np.max(expt_array))
 
 # # Verify RA and DEC # #
 RA, DEC = RA_array[0], DEC_array[0]
@@ -215,46 +215,47 @@ wavelength, flux_unbuffered_list, wavelength_buffered, flux_buffered_list, buffe
 [flux_collection_buffered, flux_template_A_buffered, flux_template_B_buffered] = \
     flux_buffered_list
 
-# # Calculate broadening function RVs to use as initial guesses # #
-# RV_guesses_A, _ = cRV.radial_velocities_of_multiple_spectra(
-#    1-flux_collection, flux_template_A, rv_options, number_of_parallel_jobs=4,
-#    plot=False, fit_two_components=False
-# )
-RV_guess_collection = np.empty((len(wavelength_collection_list), 2))
 
-model = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/Binary_Analysis/JKTEBOP/kic10001167/kepler_pdcsap_2/model.out')
+RV_collection = np.empty((len(wavelength_collection_list), 2))
+
 phase = np.mod(bjdtdb-2455028.0991277853, orbital_period_estimate, dtype=np.float64)/orbital_period_estimate
 # RV_guess_collection[:, 0] = np.loadtxt('results/4265_5800_rvA.txt')[:, 1]
 # RV_guess_collection[:, 1] = np.loadtxt('results/4265_5800_rvB.txt')[:, 1]
-RV_guess_collection[:, 0] = np.interp(phase, model[:, 0], model[:, 6]) - system_RV_estimate
-RV_guess_collection[:, 1] = np.interp(phase, model[:, 0], model[:, 7]) - system_RV_estimate
+RV_collection[:, 0] = np.append(
+    np.loadtxt('results_backup0227/4400_5825_rvA.txt')[:, 1], np.loadtxt('results_backup0227/4_spectra_rv.txt')[:, 1]
+)
+RV_collection[:, 1] = np.append(
+    np.loadtxt('results_backup0227/4400_5825_rvB.txt')[:, 1], np.loadtxt('results_backup0227/4_spectra_rv.txt')[:, 2]
+)
+
+separated_flux_A, separated_flux_B = ssr.separate_component_spectra(
+    flux_collection_buffered, RV_collection[:, 0], RV_collection[:, 1], sep_comp_options
+)
+
+flux_corrected = np.zeros(flux_collection_buffered.shape[0])
+n = 0
+for i in range(flux_collection_buffered.shape[1]):
+    if i in sep_comp_options.use_for_spectral_separation_A and i in sep_comp_options.use_for_spectral_separation_B:
+        n += 1
+        correction = ssr.shift_spectrum(separated_flux_A, RV_collection[i, 0], delta_v)
+        # correction += ssr.shift_spectrum(separated_flux_B, RV_collection[i, 1], delta_v)
+        flux_corrected += flux_collection_buffered[:, i] - correction
+
+flux_corrected /= n
+plt.figure()
+plt.plot(wavelength_buffered[~buffer_mask], flux_corrected[~buffer_mask])
+
+from sb2sep.broadening_function_svd import BroadeningFunction
+mask_neg = 1-flux_corrected < 0.0
+flux_corrected[mask_neg] = 1.0
+BF = BroadeningFunction(
+    1-flux_corrected[~buffer_mask], 1-flux_template_B_buffered[~buffer_mask], 300, delta_v
+)
+BF.solve()
+BF.smooth_sigma = 3.0
+BF.smooth()
+plt.figure()
+plt.plot(BF.velocity, BF.bf)
+plt.show()
 
 
-########################### SEPARATION ROUTINE CALLS #################################
-# # #  Separate component spectra and calculate RVs iteratively for large interval # # #
-if True:
-    interval_results = ssr.spectral_separation_routine_multiple_intervals(
-        wavelength_buffered, wavelength_intervals_full, flux_collection_buffered,
-        flux_template_A_buffered,
-        flux_template_B_buffered,
-        RV_guess_collection,
-        routine_options, sep_comp_options, rv_options,
-        wavelength_buffer_size, time_values=bjdtdb - (2400000 + 55028.099127785), period=orbital_period_estimate
-    )
-# # # Calculate error # # #
-for i in range(len(wavelength_intervals)):
-    # RV_guess_collection[:, 0] = np.interp(phase, model[:, 0], model[:, 6]) - system_RV_estimate
-    # RV_guess_collection[:, 1] = np.interp(phase, model[:, 0], model[:, 7]) - system_RV_estimate
-    RV_guess_collection[:, 0] = np.loadtxt('results/4400_5825_rvA.txt')[:, 1]
-    RV_guess_collection[:, 1] = np.loadtxt('results/4400_5825_rvB.txt')[:, 1]
-    interval_results = ssr.spectral_separation_routine_multiple_intervals(
-        wavelength_buffered, [wavelength_intervals[i]], flux_collection_buffered,
-        flux_template_A_buffered,
-        flux_template_B_buffered,
-        RV_guess_collection,
-        routine_options, sep_comp_options, rv_options,
-        wavelength_buffer_size, time_values=bjdtdb - (2400000 + 55028.099127785), period=orbital_period_estimate
-    )
-plt.show(block=True)
-
-# output is saved to results/.

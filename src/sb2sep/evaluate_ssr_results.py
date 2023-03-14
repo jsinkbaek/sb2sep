@@ -134,7 +134,7 @@ class RoutineResults:
         self.interval_results.append(new_result)
 
 
-def load_routine_results(folder_path: str, filename_bulk_list: list):
+def load_routine_results(folder_path: str, filename_bulk_list: list, sort=False):
     routine_results = RoutineResults()
     for filename_bulk in filename_bulk_list:
         try:
@@ -163,6 +163,15 @@ def load_routine_results(folder_path: str, filename_bulk_list: list):
             time_values_A, RV_A = rvA_array[:, 0], rvA_array[:, 1]
             time_values_B, RV_B = rvB_array[:, 0], rvB_array[:, 1]
         RV_A_initial, RV_B_initial = rvs_initial[:, 0], rvs_initial[:, 1]
+
+        if sort:
+            asort = np.argsort(time_values_A)
+            time_values_A, time_values_B = time_values_A[asort], time_values_B[asort]
+            RV_A, RV_B, RV_A_initial, RV_B_initial = RV_A[asort], RV_B[asort], RV_A_initial[asort], RV_B_initial[asort]
+            velA_array, velB_array = velA_array[asort, :], velB_array[asort, :]
+            bfA_array, bfB_array = bfA_array[asort, :], bfB_array[asort, :]
+            bfA_smooth_array, bfB_smooth_array = bfA_smooth_array[asort, :], bfB_smooth_array[asort, :]
+            modelA_array, modelB_array = modelA_array[asort, :], modelB_array[asort, :]
 
         interval_result = IntervalResult(
             time_values_A, time_values_B, wavelength, separated_flux_A, separated_flux_B, template_flux_A,

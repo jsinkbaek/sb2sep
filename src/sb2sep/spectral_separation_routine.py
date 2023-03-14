@@ -369,7 +369,7 @@ def _update_bf_plot(plot_ax, model, RV_actual, index):
 def recalculate_RVs(
         flux_collection: np.ndarray, separated_flux_A: np.ndarray, separated_flux_B: np.ndarray,
         RV_collection_A: np.ndarray, RV_collection_B: np.ndarray, flux_templateA: np.ndarray,
-        flux_templateB: np.ndarray, buffer_mask: np.ndarray, options: RadialVelocityOptions, get_fit_parameter_values,
+        flux_templateB: np.ndarray, buffer_mask: np.ndarray, options: RadialVelocityOptions,
         plot_ax_A=None, plot_ax_B=None, time_values=None, period=None
 ):
     """
@@ -573,8 +573,7 @@ def recalculate_RVs(
 def recalculate_RVs_orders(
         flux_collection_orders, mask_collection_orders, separated_flux_A, separated_flux_B, RV_collection_orders_A,
         RV_collection_orders_B, flux_templateA, flux_templateB, options: RadialVelocityOptions,
-        get_fit_parameter_values, plot_ax_A=None,
-        plot_ax_B=None, time_values=None, period=None, plot_order=0
+        plot_ax_A=None, plot_ax_B=None, time_values=None, period=None, plot_order=0
 ):
     """
     Assumes flux_order_collection.shape = [wavelength.size, n_orders, n_spectra], where wavelength.size is the amount of
@@ -1113,14 +1112,14 @@ def spectral_separation_routine(
         if flux_collection.ndim == 3:
             RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs_orders(
                 flux_collection, mask_collection_orders, separated_flux_A, separated_flux_B, RV_collection_A,
-                RV_collection_B, flux_templateA, flux_templateB, rv_options, get_fit_parameter_values,
+                RV_collection_B, flux_templateA, flux_templateB, rv_options,
                 plot_ax_A=f3_ax1, plot_ax_B=f4_ax1,
                 time_values=time_values, period=period, plot_order=options.plot_order
             )
         else:
             RV_collection_A, RV_collection_B, (bf_fitres_A, bf_fitres_B) = recalculate_RVs(
                 flux_collection, separated_flux_A, separated_flux_B, RV_collection_A, RV_collection_B,
-                flux_templateA, flux_templateB, buffer_mask, rv_options, get_fit_parameter_values, plot_ax_A=f3_ax1,
+                flux_templateA, flux_templateB, buffer_mask, rv_options, plot_ax_A=f3_ax1,
                 plot_ax_B=f4_ax1, time_values=time_values, period=period
             )
 

@@ -43,11 +43,13 @@ files_science = [
     'FIBk230065_step011_merge.fits', 'FIBk060008_step011_merge.fits', 'FIFj100096_step011_merge.fits',
     'FIEh060100_step012_merge.fits', 'FIBj010039_step011_merge.fits', 'FIBk030040_step011_merge.fits',
     'FIBk140072_step011_merge.fits', 'FIDh100076_step011_merge.fits', 'FIBk040034_step011_merge.fits',
-    'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits'
+    'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits',
+    'FIGb130102_step011_merge.fits', 'FIGb200113_step011_merge.fits', 'FIGb260120_step011_merge.fits',
+    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits'
 ]
 folder_science = '/home/sinkbaek/Data/KIC10001167/'
 stellar_target = "kic10001167"
-wavelength_normalization_limit = (4315, 7000)   # Ångström, limit to data before performing continuum normalization
+wavelength_normalization_limit = (4315, 7200)   # Ångström, limit to data before performing continuum normalization
 wavelength_buffer_size = 4.0                     # Ångström, padding included at ends of spectra. Useful when doing
                                                 # wavelength shifts with np.roll()
 delta_v = 1.0         # interpolation sampling resolution for spectrum in km/s
@@ -79,7 +81,6 @@ expt_array = np.array([])
 
 # # # Load fits files, collect and normalize data # # #
 i = 0
-
 for filename in files_science:
     # Load observation
     wavelength, flux, date, ra, dec, exptime = spf.load_program_spectrum(folder_science + filename)
@@ -88,45 +89,29 @@ for filename in files_science:
     DEC_array = np.append(DEC_array, dec)
     expt_array = np.append(expt_array, exptime)
 
-    # Prepare for continuum fit
-    selection_mask = (wavelength > wavelength_normalization_limit[0]) & \
-                     (wavelength < wavelength_normalization_limit[1])
-    wavelength = wavelength[selection_mask]
-    flux = flux[selection_mask]
-
-    # Remove values under 0
-    selection_mask = (flux >= 0.0)
-    flux = flux[selection_mask]
-    wavelength = wavelength[selection_mask]
-
-    # Performs continuum fit and reduces emission lines (by removing above 2.5 std from fitted continuum)
-    if load_previous is False:
-        wavelength, flux = spf.simple_normalizer(
-            wavelength, flux, reduce_em_lines=True, plot=False, poly1deg=5, poly2deg=6
-        )
-        np.save(f'temp/wavelength_{i}.npy', wavelength)
-        np.save(f'temp/flux_{i}.npy', flux)
-    else:
-        wavelength = np.load(f'temp/wavelength_{i}.npy')
-        flux = np.load(f'temp/flux_{i}.npy')
-
     # Append to collection
     wavelength_collection_list.append(wavelength)
     flux_collection_list.append(flux)
     i += 1
 
-asort = np.argsort(files_science)
+sep_comp_options.use_for_spectral_separation_A = spectral_separation_array_A        # see notes earlier
+sep_comp_options.use_for_spectral_separation_B = spectral_separation_array_B
 
-wavelength, (flux_collection) = spf.resample_multiple_spectra(
-    delta_v, (wavelength_collection_list, flux_collection_list), wavelength_a=6866, wavelength_b=6925
-)
-flux_collection = flux_collection[0]
-print(flux_collection.shape)
-
-# flux_collection = flux_collection[:, asort]
-# files_science = np.array(files_science)[asort]
+if load_previous:
+    wavelength = np.load('temp/wavelength.npy')
+    flux_collection = np.load('temp/flux_normalized.npy')
+else:
+    wavelength, flux_collection = spf.resample_and_normalize_all_spectra(
+        wavelength_collection_list, flux_collection_list, delta_v, plot=True,
+        wavelength_limits=wavelength_normalization_limit
+    )
+    np.save('temp/wavelength.npy', wavelength)
+    np.save('temp/flux_normalized.npy', flux_collection)
 
 mean_flux = np.sum(flux_collection, axis=1) / flux_collection.shape[1]
+mask = (wavelength > 6866) & (wavelength < 6925)
+flux_collection = flux_collection[mask, :]
+mean_flux = mean_flux[mask]
 
 from lyskryds.krydsorden import getCCF, getRV
 rvs_combined = np.zeros(flux_collection.shape[1])
@@ -138,6 +123,7 @@ for k in range(3):
     rvs = []
     errs = []
     for i in range(flux_collection.shape[1]):
+
         vel, ccf = getCCF(1 - flux_collection[:, i], 1 - mean_flux, rvr=71)
         rv, err = getRV(vel, ccf, poly=False, new=True, zucker=False)
         label = f'{files_science[i][:6]}  {rv:.3f} km/s'
@@ -152,5 +138,6 @@ for k in range(3):
     print(np.array([rvs, errs]).T)
     np.savetxt(f'tell_rv_{k}.txt', rvs)
     np.savetxt(f'tell_rv_tot.txt', rvs_combined)
-
+plt.figure()
+plt.plot(rvs_combined, '.')
 plt.show()
