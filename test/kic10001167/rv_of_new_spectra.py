@@ -46,7 +46,7 @@ files_science = [
     'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits',
     # NEW SPECTRA BELOW
     'FIGb130102_step011_merge.fits', 'FIGb200113_step011_merge.fits', 'FIGb260120_step011_merge.fits',
-    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits'
+    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits', 'FIGc170105_step011_merge.fits'
 ]
 len_old = 31
 folder_science = '/home/sinkbaek/Data/KIC10001167/'
@@ -83,7 +83,7 @@ template_spectrum_path_A = 'Data/template_spectra/4750_25_m05p00.ms.fits'
 template_spectrum_path_B = 'Data/template_spectra/6250_45_m05p00.ms.fits'
 # convolve_templates_to_res = 80000
 
-load_previous = False
+load_previous = True
 
 # # Alternative generation of options objects above through configuration files:
 routine_options, sep_comp_options, rv_options = load_configuration_files(
@@ -228,7 +228,7 @@ ssr._plot_ssr_iteration(
     rv_combined_A, rv_combined_B, bjdtdb - (2400000 + 55028.099127785), orbital_period_estimate, buffer_mask,
     sep_comp_options.rv_lower_limit, sep_comp_options.rv_proximity_limit
 )
-np.savetxt('results_backup0227/5_spectra_rv.txt', np.array([bjdtdb[len_old:]-(2400000 + 55028.099127785), rv_new_A, rv_new_B]).T)
+np.savetxt('results_backup0227/6_spectra_rv.txt', np.array([bjdtdb[len_old:]-(2400000 + 55028.099127785), rv_new_A, rv_new_B]).T)
 
 print(rv_new_A, rv_new_B)
 plt.show()

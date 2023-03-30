@@ -1,3 +1,4 @@
+import glob
 import sys
 
 import numpy as np
@@ -8,6 +9,10 @@ from barycorrpy import get_BC_vel, utc_tdb
 import scipy.constants as scc
 import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.cm as cm
+import matplotlib.colors as mcol
+import matplotlib.collections as mcoll
+from numpy.polynomial import Polynomial
 
 try:
     from src.sb2sep import spectrum_processing_functions as spf
@@ -23,6 +28,53 @@ except ModuleNotFoundError:
     from sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
     import sb2sep.calculate_radial_velocities as cRV
 import warnings
+
+
+def colorline(
+    x, y, z=None, cmap=plt.get_cmap('copper'), norm=plt.Normalize(0.0, 1.0),
+        linewidth=3, alpha=1.0):
+    """
+    http://nbviewer.ipython.org/github/dpsanders/matplotlib-examples/blob/master/colorline.ipynb
+    http://matplotlib.org/examples/pylab_examples/multicolored_line.html
+    Plot a colored line with coordinates x and y
+    Optionally specify colors in the array z
+    Optionally specify a colormap, a norm function and a line width
+
+    https://stackoverflow.com/questions/8500700/how-to-plot-a-gradient-color-line-in-matplotlib
+    """
+
+    # Default colors equally spaced on [0,1]:
+    if z is None:
+        z = np.linspace(0.0, 1.0, len(x))
+
+    # Special case if a single number:
+    if not hasattr(z, "__iter__"):  # to check for numerical input -- this is a hack
+        z = np.array([z])
+
+    z = np.asarray(z)
+
+    segments = make_segments(x, y)
+    lc = mcoll.LineCollection(segments, array=z, cmap=cmap, norm=norm, linewidth=linewidth, alpha=alpha)
+
+    ax = plt.gca()
+    ax.add_collection(lc)
+
+    return lc
+
+
+def make_segments(x, y):
+    """
+    Create list of line segments from x and y coordinates, in the correct format
+    for LineCollection: an array of the form numlines x (points per line) x 2 (x
+    and y) array
+
+    https://stackoverflow.com/questions/8500700/how-to-plot-a-gradient-color-line-in-matplotlib
+    """
+
+    points = np.array([x, y]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+    return segments
+
 
 matplotlib.rcParams.update({'font.size': 25})
 
@@ -45,8 +97,10 @@ files_science = [
     'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits',
     # NEW SPECTRA BELOW
     'FIGb130102_step011_merge.fits', 'FIGb200113_step011_merge.fits', 'FIGb260120_step011_merge.fits',
-    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits'
+    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits', 'FIGc170105_step011_merge.fits'
 ]
+asort = np.argsort(files_science)
+print(np.array(files_science)[asort])
 len_old = 31
 folder_science = '/home/sinkbaek/Data/KIC10001167/'
 
@@ -212,7 +266,7 @@ separated_flux_A, separated_flux_B = ssr.separate_component_spectra(
 rv_options.evaluate_spectra_A = None
 rv_options.evaluate_spectra_B = None
 
-model = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/Binary_Analysis/JKTEBOP/kic10001167/kepler_pdcsap_12/model.out')
+model = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/Binary_Analysis/JKTEBOP/kic10001167/kepler_pdcsap_16/model.out')
 phase = np.mod(bjdtdb-2455028.0991277853, orbital_period_estimate, dtype=np.float64)/orbital_period_estimate
 rv_guess_new = np.empty((len(files_science), 2))
 rv_guess_new[:, 0] = np.interp(phase, model[:, 0], model[:, 6]) - system_RV_estimate
@@ -250,7 +304,132 @@ else:
     rvA_intervals = np.loadtxt('rvA_intervals.txt')
     rvB_intervals = np.loadtxt('rvB_intervals.txt')
 
+telluric_rv = np.loadtxt('tell_rv_tot.txt')
+rva_reference = np.loadtxt('results_backup0227/prepared/rvA_extra_points.dat')
+rva_reference[:, 1] = rva_reference[:, 1] + telluric_rv
+rva_reference[:, 1] += 103.40
 
+# # # # Measure average spectrograph systematics (line shape vs wavelength) using ALL spectra to correct overestimated uncertainty
+
+# Make blue-red colormap
+# https://stackoverflow.com/questions/25748183/python-making-color-bar-that-runs-from-red-to-blue
+cm1 = mcol.LinearSegmentedColormap.from_list("bluered", ["b", "r"])
+run_values = np.linspace(1, len(wavelength_intervals), len(wavelength_intervals))
+run_values_2 = np.linspace(1, len(files_science), len(files_science))
+print(run_values)
+print(run_values_2)
+cnorm = mcol.Normalize(vmin=run_values[0], vmax=run_values[-1])
+cnorm_2 = mcol.Normalize(vmin=run_values_2[0], vmax=run_values_2[-1])
+cpick = cm.ScalarMappable(norm=cnorm, cmap=cm1)
+cpick.set_array([])
+cpick2 = cm.ScalarMappable(norm=cnorm, cmap=cm1)
+cpick_2 = cm.ScalarMappable(norm=cnorm_2, cmap=cm1)
+cpick_2.set_array([])
+cpick2_2 = cm.ScalarMappable(norm=cnorm_2, cmap=cm1)
+
+residual_intervals = rvA_intervals - rva_reference[:, 1].reshape((rva_reference.shape[0], 1))
+residual_intervals_sorted = residual_intervals[asort, :]
+xvs = [np.mean(wavelength_intervals[i]) for i in range(len(wavelength_intervals))]  # np.ones(residual_intervals.shape) * run_values.reshape(1, residual_intervals.shape[1])
+xvs = np.repeat(np.array(xvs).reshape(1, len(xvs)), residual_intervals.shape[0], axis=0)
+fit = Polynomial.fit(xvs.flatten(), residual_intervals.flatten(), 1)
+# fitvals = fit(run_values)
+fitvals = fit(xvs[0, :])
+fig = plt.figure(figsize=(14, 10))
+# plt.plot(run_values, fitvals, 'k--', label='Line fit', linewidth=3)
+plt.plot(xvs[0, :], fitvals, 'k--', label='Line fit', linewidth=3)
+for i in range(residual_intervals.shape[1]):
+    # plt.scatter(np.ones(residual_intervals.shape[0]) * (i+1), residual_intervals_sorted[:, i], marker='D', color=cpick_2.to_rgba(run_values_2))
+    plt.scatter(xvs[:, i], residual_intervals_sorted[:, i], marker='D',
+                color=cpick_2.to_rgba(run_values_2))
+plt.legend()
+plt.xlabel('Mean interval wavelength [Å]')
+plt.ylabel('Residual [km/s]')
+fig.colorbar(cpick2_2, label='Spectrum number (chronological)')
+plt.savefig('residuals_intervals_spectra.png', dpi=150)
+
+fig = plt.figure(figsize=(14, 10))
+for i in range(residual_intervals.shape[0]):
+    plt.scatter(np.ones(residual_intervals.shape[1])*(i+1), residual_intervals_sorted[i, :], marker='D', color=cpick.to_rgba(run_values))
+plt.xlabel('Spectrum number (chronological)')
+plt.ylabel('Residual [km/s]')
+fig.colorbar(cpick2, label='Interval number (from bluest to reddest)')
+plt.savefig('residuals_spectra_intervals.png', dpi=150)
+
+fig = plt.figure(figsize=(14, 10))
+residuals_corrected = residual_intervals - fitvals.reshape(1, fitvals.size)
+residuals_corrected = residuals_corrected[asort, :]
+for i in range(residual_intervals.shape[0]):
+    plt.scatter(np.ones(residual_intervals.shape[1])*(i+1), residuals_corrected[i, :], marker='D', color=cpick.to_rgba(run_values))
+plt.xlabel('Spectrum number (chronological)')
+plt.ylabel('Residual (corrected) [km/s]')
+fig.colorbar(cpick2, label='Interval number (from bluest to reddest)')
+plt.show()
+
+rvA_intervals = rvA_intervals - fitvals.reshape(1, fitvals.size)
+rvB_intervals = rvB_intervals - fitvals.reshape(1, fitvals.size)
+
+
+# # # # Measure ThAr uncertainties
+from lyskryds.krydsorden import getCCF, getRV
+from astropy.stats import biweight_location
+thars_ = glob.glob('/media/sinkbaek/NOT_DATA/fiestool/Data/output/kic10001167/*thar.fits')
+thars = [x.replace('008_thar', '012_merge') for x in thars_]
+thars = sorted(thars)
+wl_list = []
+fl_list = []
+expt_list = []
+for fn in thars:
+    wl, fl, _, _, _, expt = spf.load_program_spectrum(fn)
+    wl_list.append(wl)
+    fl_list.append(fl)
+    expt_list.append(expt)
+idx_factor4 = 29
+dv = 1.0
+wl_thar, fls_thar = spf.resample_to_equal_velocity_steps(wl_list, dv, fl_list, wavelength_a=4048, wavelength_b=6850)
+plt.figure()
+fls_thar[:, idx_factor4] = fls_thar[:, idx_factor4] / 4
+# template_median = np.median(fls_thar, axis=1)
+template_thar = biweight_location(fls_thar, axis=1)
+plt.plot(wl_thar.reshape(wl_thar.size, 1), fls_thar)
+# plt.plot(wl_thar, template_median, 'k-', linewidth=3)
+plt.plot(wl_thar, template_thar, 'k--', linewidth=3)
+plt.show()
+
+drifts_combined = np.zeros(len(thars))
+
+for k in range(3):
+    plt.figure()
+    drifts = []
+    errs = []
+    template_thar = biweight_location(fls_thar, axis=1)
+    for i in range(fls_thar.shape[1]):
+        vel, ccf = getCCF(fls_thar[:, i], template_thar, rvr=31)
+        vel = vel * dv
+        rv, err = getRV(vel, ccf, poly=False, new=True, zucker=False)
+        label = f'{i}  {1000 * rv:.2f} m/s'
+        plt.plot(vel * 1000, ccf / np.max(ccf) - i, label=label)
+        plt.plot([rv * 1000, rv * 1000], [-i, 1 - i], 'k--')
+        drifts.append(rv)
+        errs.append(err)
+    drifts_combined += drifts
+    plt.xlabel('Velocity [m/s]')
+    plt.legend(fontsize=10)
+    for i in range(fls_thar.shape[1]):
+        fls_thar[:, i] = ssr.shift_spectrum(fls_thar[:, i], -drifts[i], dv)
+print('Drifts')
+print(drifts_combined*1000)
+print('Deviation from mean')
+print(np.abs(drifts_combined-np.mean(drifts_combined))*1000)
+print('Errs')
+errs = np.array(errs)
+print(errs*1000)
+
+plt.show()
+
+
+
+
+# Measure uncertainties
 from astropy.stats import biweight_midvariance
 def err_biw_midv_clip(rvs_, threshold=4, n_iter=10):
     ite = 0
@@ -303,14 +482,16 @@ print('errs_combined_A')
 print(errs_combined_A)
 print('errs_combined_B')
 print(errs_combined_B[idx_b])
-np.savetxt('errs_A.txt', errs_A_simple)
-np.savetxt('errs_B.txt', errs_B[idx_b])
+np.savetxt('errs_A_corrected.txt', errs_A_simple)
+np.savetxt('errs_B_corrected.txt', errs_B[idx_b])
 
 rva_saved = np.loadtxt('results_backup0227/prepared/rvA_extra_points.dat')
 rvb_saved = np.loadtxt('results_backup0227/prepared/rvB_extra_points.dat')
+
+
 rva_saved[:, 2] = errs_A_simple
 rvb_saved[:, 2] = errs_B[idx_b]
-np.savetxt('rvA_prepared.dat', rva_saved)
-np.savetxt('rvB_prepared.dat', rvb_saved)
+np.savetxt('rvA_prepared_err_corrected.dat', rva_saved)
+np.savetxt('rvB_prepared_err_corrected.dat', rvb_saved)
 
 plt.show()

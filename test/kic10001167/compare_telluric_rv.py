@@ -45,7 +45,7 @@ files_science = [
     'FIBk140072_step011_merge.fits', 'FIDh100076_step011_merge.fits', 'FIBk040034_step011_merge.fits',
     'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits',
     'FIGb130102_step011_merge.fits', 'FIGb200113_step011_merge.fits', 'FIGb260120_step011_merge.fits',
-    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits'
+    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits', 'FIGc170105_step011_merge.fits'
 ]
 folder_science = '/home/sinkbaek/Data/KIC10001167/'
 stellar_target = "kic10001167"
@@ -120,19 +120,21 @@ for k in range(3):
     if k != 0:
         for i in range(flux_collection.shape[1]):
             flux_collection[:, i] = ssr.shift_spectrum(flux_collection[:, i], -rvs[i], delta_v)
+    mean_flux = np.sum(flux_collection, axis=1) / flux_collection.shape[1]
     rvs = []
     errs = []
     for i in range(flux_collection.shape[1]):
 
         vel, ccf = getCCF(1 - flux_collection[:, i], 1 - mean_flux, rvr=71)
+        vel = vel * delta_v
         rv, err = getRV(vel, ccf, poly=False, new=True, zucker=False)
-        label = f'{files_science[i][:6]}  {rv:.3f} km/s'
-        plt.plot(vel, ccf / np.max(ccf) - i, label=label)
-        plt.plot([rv, rv], [-i, 1 - i], 'k--')
+        label = f'{files_science[i][:6]}  {rv*1000:.2f} m/s'
+        plt.plot(vel*1000, ccf / np.max(ccf) - i, label=label)
+        plt.plot([rv*1000, rv*1000], [-i, 1 - i], 'k--')
         rvs.append(rv)
         errs.append(err)
     rvs_combined += rvs
-    plt.xlabel('Velocity [km/s]')
+    plt.xlabel('Velocity [m/s]')
     plt.yticks([])
     plt.legend()
     print(np.array([rvs, errs]).T)

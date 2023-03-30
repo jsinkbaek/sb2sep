@@ -86,7 +86,7 @@ use_for_spectral_separation = np.array([
 observatory_location = EarthLocation.of_site("Roque de los Muchachos")
 observatory_name = "Roque de los Muchachos"
 stellar_target = "kic10001167"
-wavelength_normalization_limit = (4315, 7000)   # Ångström, limit to data before performing continuum normalization
+wavelength_normalization_limit = (4315, 7200)   # Ångström, limit to data before performing continuum normalization
 wavelength_RV_limit = (4315, 7000)              # Ångström, the area used after normalization
 wavelength_buffer_size = 4.0                     # Ångström, padding included at ends of spectra. Useful when doing
                                                 # wavelength shifts with np.roll()
