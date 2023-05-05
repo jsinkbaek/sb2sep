@@ -97,7 +97,10 @@ files_science = [
     'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits',
     # NEW SPECTRA BELOW
     'FIGb130102_step011_merge.fits', 'FIGb200113_step011_merge.fits', 'FIGb260120_step011_merge.fits',
-    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits', 'FIGc170105_step011_merge.fits'
+    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits', 'FIGc170105_step011_merge.fits',
+    'FIGc280075_step011_merge.fits', 'FIGc290066_step011_merge.fits', 'FIGc290075_step011_merge.fits',
+    'FIGd010114_step011_merge.fits', 'FIGd070138_step011_merge.fits', 'FIGd120038_step011_merge.fits',
+    'FIGd260101_step011_merge.fits', 'FIGe040084_step011_merge.fits'
 ]
 asort = np.argsort(files_science)
 print(np.array(files_science)[asort])
@@ -370,62 +373,76 @@ rvB_intervals = rvB_intervals - fitvals.reshape(1, fitvals.size)
 
 
 # # # # Measure ThAr uncertainties
-from lyskryds.krydsorden import getCCF, getRV
-from astropy.stats import biweight_location
-thars_ = glob.glob('/media/sinkbaek/NOT_DATA/fiestool/Data/output/kic10001167/*thar.fits')
-thars = [x.replace('008_thar', '012_merge') for x in thars_]
-thars = sorted(thars)
-wl_list = []
-fl_list = []
-expt_list = []
-for fn in thars:
-    wl, fl, _, _, _, expt = spf.load_program_spectrum(fn)
-    wl_list.append(wl)
-    fl_list.append(fl)
-    expt_list.append(expt)
-idx_factor4 = 29
-dv = 1.0
-wl_thar, fls_thar = spf.resample_to_equal_velocity_steps(wl_list, dv, fl_list, wavelength_a=4048, wavelength_b=6850)
-plt.figure()
-fls_thar[:, idx_factor4] = fls_thar[:, idx_factor4] / 4
-# template_median = np.median(fls_thar, axis=1)
-template_thar = biweight_location(fls_thar, axis=1)
-plt.plot(wl_thar.reshape(wl_thar.size, 1), fls_thar)
-# plt.plot(wl_thar, template_median, 'k-', linewidth=3)
-plt.plot(wl_thar, template_thar, 'k--', linewidth=3)
-plt.show()
+if False:
+    from lyskryds.krydsorden import getCCF, getRV
+    from astropy.stats import biweight_location
 
-drifts_combined = np.zeros(len(thars))
-
-for k in range(3):
+    thars_ = glob.glob('/media/sinkbaek/NOT_DATA/fiestool/Data/output/kic10001167/*thar.fits')
+    thars__ = [x.replace('008_thar', '012_merge') for x in thars_]
+    thars = [x.replace('007_thar', '011_merge') for x in thars__]
+    thars.append('/media/sinkbaek/NOT_DATA/fiestool/Data/output/kic10001167/FIGe040083_step011_merge.fits')     # THIS WON'T GO WELL IF YOU GET NEWER DATA THAN THIS
+    print(thars)
+    wl_list = []
+    fl_list = []
+    expt_list = []
+    for fn in thars:
+        wl, fl, _, _, _, expt = spf.load_program_spectrum(fn)
+        wl_list.append(wl)
+        fl_list.append(fl)
+        expt_list.append(expt)
+    idx_factor4 = [30, 39, 32, 35, 38, 37, 34, 31, 40, 41, 42, 43, 44]
+    dv = 1.0
+    wl_thar, fls_thar = spf.resample_to_equal_velocity_steps(wl_list, dv, fl_list, wavelength_a=4048, wavelength_b=6850)
     plt.figure()
-    drifts = []
-    errs = []
+    fls_thar[:, idx_factor4] = fls_thar[:, idx_factor4] / 4
+    # template_median = np.median(fls_thar, axis=1)
     template_thar = biweight_location(fls_thar, axis=1)
+    plt.plot(wl_thar.reshape(wl_thar.size, 1), fls_thar)
+    # plt.plot(wl_thar, template_median, 'k-', linewidth=3)
+    plt.plot(wl_thar, template_thar, 'k--', linewidth=3)
     for i in range(fls_thar.shape[1]):
-        vel, ccf = getCCF(fls_thar[:, i], template_thar, rvr=31)
-        vel = vel * dv
-        rv, err = getRV(vel, ccf, poly=False, new=True, zucker=False)
-        label = f'{i}  {1000 * rv:.2f} m/s'
-        plt.plot(vel * 1000, ccf / np.max(ccf) - i, label=label)
-        plt.plot([rv * 1000, rv * 1000], [-i, 1 - i], 'k--')
-        drifts.append(rv)
-        errs.append(err)
-    drifts_combined += drifts
-    plt.xlabel('Velocity [m/s]')
-    plt.legend(fontsize=10)
-    for i in range(fls_thar.shape[1]):
-        fls_thar[:, i] = ssr.shift_spectrum(fls_thar[:, i], -drifts[i], dv)
-print('Drifts')
-print(drifts_combined*1000)
-print('Deviation from mean')
-print(np.abs(drifts_combined-np.mean(drifts_combined))*1000)
-print('Errs')
-errs = np.array(errs)
-print(errs*1000)
+        plt.figure()
+        plt.title(f'{i}')
+        plt.plot(wl_thar, fls_thar[:, i])
+        plt.plot(wl_thar, template_thar, 'k--')
+    plt.show()
 
-plt.show()
+    drifts_combined = np.zeros(len(thars))
 
+    for k in range(2):
+        print(f'k = {k} of {1}')
+        plt.figure()
+        drifts = []
+        errs_thar = []
+        template_thar = biweight_location(fls_thar, axis=1)
+        for i in range(fls_thar.shape[1]):
+            print(f'i = {i} of {fls_thar.shape[1]-1}')
+            vel, ccf = getCCF(fls_thar[:, i], template_thar, rvr=31)
+            vel = vel * dv
+            rv, err_ = getRV(vel, ccf, poly=False, new=True, zucker=False)
+            label = f'{i}  {1000 * rv:.2f} m/s'
+            plt.plot(vel * 1000, ccf / np.max(ccf) - i, label=label)
+            plt.plot([rv * 1000, rv * 1000], [-i, 1 - i], 'k--')
+            drifts.append(rv)
+            errs_thar.append(err_)
+        drifts_combined += drifts
+        plt.xlabel('Velocity [m/s]')
+        plt.legend(fontsize=10)
+        for i in range(fls_thar.shape[1]):
+            fls_thar[:, i] = ssr.shift_spectrum(fls_thar[:, i], -drifts[i], dv)
+    print('Drifts')
+    print(drifts_combined * 1000)
+    print('Deviation from mean')
+    print(np.abs(drifts_combined - np.mean(drifts_combined)) * 1000)
+    print('Errs')
+    errs_thar = np.array(errs_thar)
+    print(errs_thar * 1000)
+    drift_deviation_thar = np.abs(drifts_combined - np.mean(drifts_combined))
+
+    asort_files = np.argsort(files_science)
+    np.savetxt('thar_drifts.dat', drifts_combined)
+
+    plt.show()
 
 
 
@@ -474,7 +491,11 @@ errs_combined_B = np.copy(errs_B)
 mask_B = errs_B-errs_B_simple > 0
 errs_combined_B[mask_B] = errs_B_simple[mask_B]
 
-idx_b = [1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
+idx_b = [
+    1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34,
+    36,  # 37, 38, 39, 40
+    41, 42, 43, 44
+]
 
 print(f'{np.mean(errs_A):.3f}    {np.mean(errs_A_simple):.3f}   {np.mean(errs_combined_A):.3f}')
 print(f'{np.mean(errs_B[idx_b]):.3f}    {np.mean(errs_B_simple[idx_b]):.3f}   {np.mean(errs_combined_B[idx_b]):.3f}')
@@ -488,10 +509,30 @@ np.savetxt('errs_B_corrected.txt', errs_B[idx_b])
 rva_saved = np.loadtxt('results_backup0227/prepared/rvA_extra_points.dat')
 rvb_saved = np.loadtxt('results_backup0227/prepared/rvB_extra_points.dat')
 
+asort_files = np.argsort(files_science)
+
+errors_thar = np.loadtxt('thar_uncertainties_sorted.dat')
+errors_telluric = np.loadtxt('telluric_cross_validation_std.dat')[asort_files]
+
+errs_A_simple[asort_files] = np.sqrt(errs_A_simple[asort_files]**2 + errors_thar**2 + errors_telluric**2)
+errs_B[asort_files] = np.sqrt(errs_B[asort_files]**2 + errors_thar**2 + errors_telluric**2)
+
+print('errs_with_thar_A')
+print(errs_A_simple)
+print('errs_with_thar_B')
+print(errs_B[idx_b])
 
 rva_saved[:, 2] = errs_A_simple
 rvb_saved[:, 2] = errs_B[idx_b]
-np.savetxt('rvA_prepared_err_corrected.dat', rva_saved)
-np.savetxt('rvB_prepared_err_corrected.dat', rvb_saved)
+np.savetxt('rvA_prepared_err_thar_telluric.dat', rva_saved)
+np.savetxt('rvB_prepared_err_thar_telluric.dat', rvb_saved)
+
+jitter_term = 0.0914
+rva_jitter = np.copy(rva_saved)
+rva_jitter[:, 2] = np.sqrt(rva_jitter[:, 2]**2 + jitter_term**2)
+rvb_jitter = np.copy(rvb_saved)
+rvb_jitter[:, 2] = np.sqrt(rvb_jitter[:, 2]**2 + jitter_term**2)
+np.savetxt('rvA_with_jitter.dat', rva_jitter)
+np.savetxt('rvB_with_jitter.dat', rvb_jitter)
 
 plt.show()

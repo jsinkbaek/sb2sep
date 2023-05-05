@@ -7,7 +7,7 @@ A rotational broadening function fitting routine, with the model profile used, a
 lmfit minimizer method is called. Code is adapted from the shazam.py library for the SONG telescope
 (written by Emil Knudstrup and Jens Jessen-Hansen)
 """
-
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.signal import fftconvolve
 import lmfit
@@ -143,7 +143,10 @@ def fitting_routine_rotational_broadening_profile(
         velocities, broadening_function_values, fitparams.velocity_fit_width, fitparams.RV
     )
     peak_idx = np.argmax(broadening_function_values*weight_function_values)
-    params.add('amplitude', value=broadening_function_values[peak_idx], min=0.0)
+    params.add(
+        'amplitude', value=broadening_function_values[peak_idx], min=0.0,
+        max=99*broadening_function_values[peak_idx]
+    )
     if fitparams.RV is None:
         params.add(
             'radial_velocity_cm', value=velocities[peak_idx],
@@ -155,7 +158,13 @@ def fitting_routine_rotational_broadening_profile(
             'radial_velocity_cm', value=fitparams.RV, min=fitparams.RV-fitparams.velocity_fit_width,
             max=fitparams.RV+fitparams.velocity_fit_width
         )
-    if fitparams.vsini_vary_limit is not None:
+    if fitparams.vsini_limits is not None:
+        params.add(
+            'vsini', value=fitparams.vsini, vary=fitparams.vary_vsini,
+            min=fitparams.vsini_limits[0],
+            max=fitparams.vsini_limits[1]
+        )
+    elif fitparams.vsini_vary_limit is not None:
         params.add(
             'vsini', value=fitparams.vsini, vary=fitparams.vary_vsini,
             min=fitparams.vsini - fitparams.vsini*fitparams.vsini_vary_limit,
@@ -182,8 +191,9 @@ def fitting_routine_rotational_broadening_profile(
     fit = lmfit.minimize(
         compare_func, params,
         args=(velocities[mask_data], broadening_function_values[mask_data], weight_function_values[mask_data]),
-        xtol=1E-8, ftol=1E-8, max_nfev=500
+        xtol=1E-10, ftol=1E-10, max_nfev=500
     )
+
     if print_report:
         print(lmfit.fit_report(fit, show_correl=False))
 

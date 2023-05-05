@@ -50,7 +50,8 @@ files_science = [
     'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits',
     # NEW SPECTRA BELOW
     'FIGb130102_step011_merge.fits', 'FIGb200113_step011_merge.fits', 'FIGb260120_step011_merge.fits',
-    'FIGc030078_step011_merge.fits'
+    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits', 'FIGc170105_step011_merge.fits',
+    'FIGc280075_step011_merge.fits', 'FIGc290066_step011_merge.fits', 'FIGc290075_step011_merge.fits'
 ]
 folder_science = '/home/sinkbaek/Data/KIC10001167/'
 

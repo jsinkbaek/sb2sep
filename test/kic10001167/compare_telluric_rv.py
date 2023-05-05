@@ -44,8 +44,12 @@ files_science = [
     'FIEh060100_step012_merge.fits', 'FIBj010039_step011_merge.fits', 'FIBk030040_step011_merge.fits',
     'FIBk140072_step011_merge.fits', 'FIDh100076_step011_merge.fits', 'FIBk040034_step011_merge.fits',
     'FIEf140066_step011_merge.fits', 'FIBj150077_step011_merge.fits', 'FIDg160034_step011_merge.fits',
+    # NEW SPECTRA BELOW
     'FIGb130102_step011_merge.fits', 'FIGb200113_step011_merge.fits', 'FIGb260120_step011_merge.fits',
-    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits', 'FIGc170105_step011_merge.fits'
+    'FIGc030078_step011_merge.fits', 'FIGc110124_step011_merge.fits', 'FIGc170105_step011_merge.fits',
+    'FIGc280075_step011_merge.fits', 'FIGc290066_step011_merge.fits', 'FIGc290075_step011_merge.fits',
+    'FIGd010114_step011_merge.fits', 'FIGd070138_step011_merge.fits', 'FIGd120038_step011_merge.fits',
+    'FIGd260101_step011_merge.fits', 'FIGe040084_step011_merge.fits'
 ]
 folder_science = '/home/sinkbaek/Data/KIC10001167/'
 stellar_target = "kic10001167"
@@ -136,10 +140,91 @@ for k in range(3):
     rvs_combined += rvs
     plt.xlabel('Velocity [m/s]')
     plt.yticks([])
-    plt.legend()
-    print(np.array([rvs, errs]).T)
+    plt.legend(fontsize=7)
+    print(np.array([rvs*1000, errs*1000]).T)
     np.savetxt(f'tell_rv_{k}.txt', rvs)
     np.savetxt(f'tell_rv_tot.txt', rvs_combined)
+
+# Second pass, do a bootstrap to remove lines and estimate uncertainty
+plt.figure()
+plt.plot(mean_flux)
+plt.show()
+line_markers = [
+    (0, 75), (75, 150), (150, 191), (191, 250), (250, 315), (315, 357), (357, 401),
+    (401, 438), (438, 488), (488, 535), (535, 701), (757, 810), (823, 950), (964, 1094),
+    (1096, 1227), (1268, 1401), (1445, 1562), (1605, 1762), (1824, 1948), (1948, 2168),
+    (2220, 2371), (2381, 2554)
+]
+from numpy.random import default_rng
+rng = default_rng()
+n_runs = 1000
+results = np.empty((len(rvs_combined), n_runs))
+print(len(line_markers)//3)
+for i in range(n_runs):
+    if np.mod(i, 10) == 0.0:
+        print(f'{i} of {n_runs}')
+    temp_mean = np.copy(mean_flux)
+    temp_flux = np.copy(flux_collection)
+    sample = rng.choice(len(line_markers), size=rng.integers(2, len(line_markers)//3, 1), replace=False)
+    for k in range(len(sample)):
+        low, high = line_markers[sample[k]]
+        temp_mean[low:high+1] = 1.0
+        temp_flux[low:high+1, :] = 1.0
+    for j in range(flux_collection.shape[1]):
+        vel, ccf = getCCF(1 - temp_flux[:, j], 1 - temp_mean, rvr=71)
+        vel = vel * delta_v
+        rv, err = getRV(vel, ccf, poly=False, new=True, zucker=False)
+        results[j, i] = rv
+print('Cross validation')
+print(np.std(results, axis=1)*1000)
+np.savetxt('telluric_cross_validation_std.dat', np.std(results, axis=1))
+plt.figure()
+for i in range(results.shape[0]):
+    plt.plot([np.std(results[i, 0:x]) for x in range(50, results.shape[1])])
+plt.show()
+
+
 plt.figure()
 plt.plot(rvs_combined, '.')
+plt.show()
+
+thar = np.loadtxt('thar_drifts.dat')
+star = np.loadtxt('results_backup0227/prepared/rvA_extra_points.dat')
+asort = np.argsort(files_science)
+plt.figure()
+plt.plot((thar-rvs_combined[asort])*1000, 'D')
+
+thar_uncertainties_sorted = np.empty(thar.size)
+
+print('Error estimates from ThAr')
+print(' < 58750d')
+selection = thar[star[asort, 0] < 58750]
+print(np.std(selection)*1000)
+print(np.abs(selection-np.mean(selection))*1000)
+thar_uncertainties_sorted[star[asort, 0] < 58750] = np.std(selection)
+print(' 58750d < x < 59250')
+selection = thar[(star[asort, 0] < 59250) & (star[asort, 0] > 58750)]
+print(np.std(selection)*1000)
+print(np.abs(selection-np.mean(selection))*1000)
+thar_uncertainties_sorted[(star[asort, 0] < 59250) & (star[asort, 0] > 58750)] = np.std(selection)
+thar_uncertainties_sorted[(star[asort, 0] > 59250) & (star[asort, 0] < 59750)] = np.std(selection)
+
+
+print(' 59250 < x < 59750')
+selection = thar[(star[asort, 0] > 59250) & (star[asort, 0] < 59750)]
+print(np.std(selection)*1000)
+print(np.abs(selection-np.mean(selection))*1000)
+print(' 59750 < x < 60250')
+selection = thar[(star[asort, 0] > 59750) & (star[asort, 0] < 60250)]
+print(np.std(selection)*1000)
+print(np.abs(selection-np.mean(selection))*1000)
+thar_uncertainties_sorted[(star[asort, 0] > 59750) & (star[asort, 0] < 60250)] = np.std(selection)
+
+np.savetxt('thar_uncertainties_sorted.dat', thar_uncertainties_sorted)
+
+
+plt.figure()
+plt.plot(star[asort, 0], thar*1000, 'D', label='ThAr drift')
+plt.plot(star[asort, 0], rvs_combined[asort]*1000, 's', label='Telluric RV')
+plt.legend()
 plt.show()
