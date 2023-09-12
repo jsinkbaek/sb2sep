@@ -32,9 +32,6 @@ adjust_vsini True  # If True, vsini guess of both components will be set to the 
 
 # Conditional options:
 
-plot_order 10       # Indicates the order index to plot RVs for, if using individual orders
-                    # and not a merged spectrum. If not, this does nothing.
-
 return_unbuffered True		# If True, any padding of spectra introduced and handled with the
 				# buffer_mask parameter will be removed before returning results from
 				# the routine. If no buffer_mask is supplied, this option does

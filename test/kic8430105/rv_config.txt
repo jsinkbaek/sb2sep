@@ -59,11 +59,6 @@ iteration_limit 2	# Maximum allowed iterations per spectrum before breaking RV c
 rv_lower_limit 0.0	# Only relevant to change from 0.0 if you want plotted lines in the broadening
 			# function plots of this limit.
 
-center_on_system_rv_A False    # Used to shift the template to center on this before the broadening function
-center_on_system_rv_B False    # measurement. This is beneficial if you want to save on processing power, as the
-                                # method is most precise when you capture the signal of both comp.
-                                # If not used, should be set to False.
-
 evaluate_spectra_A None  # if not None and a list (no whitespace), only the given list of spectra (indices) will be used
 evaluate_spectra_B [1,2,3,4,5,6,7,9,11,12,13,16,17,19,21]  # to evaluate convergence. F.ex., if evaluate_spectra_A = [0, 1], and evaluate_spectra_B = [1],
                          # rv subroutine will consider spectrum 0 converged if RV_A changed by less than
