@@ -1,8 +1,14 @@
 # Installation
-The package can be installed using pip:
-```
-pip install sb2sep
-```
+#### Suggested installation:
+
+Download the whole folder, and install from the main folder in a terminal with your python environment sourced using:
+
+``pip install .``
+
+Alternatively, the last version of the package that I have uploaded to pypi can be installed using:
+
+``pip install sb2sep``
+
 
 Package is located at:
 https://pypi.org/project/sb2sep/

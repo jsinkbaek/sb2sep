@@ -159,7 +159,7 @@ for filename in os.listdir(data_path):
         # Designate if spectrum should be used for spectral separation
         # if filename in use_for_spectral_separation_A:
         #    spectral_separation_array_A = np.append(spectral_separation_array_A, i)
-        #if filename in use_for_spectral_separation_B:
+        # if filename in use_for_spectral_separation_B:
         #    spectral_separation_array_B = np.append(spectral_separation_array_B, i)
 
         # Append to collection
@@ -240,10 +240,11 @@ wavelength, flux_unbuffered_list, wavelength_buffered, flux_buffered_list, buffe
     flux_buffered_list
 
 # # Calculate broadening function RVs to use as initial guesses # #
-#RV_guesses_A, _ = cRV.radial_velocities_of_multiple_spectra(
+# RV_guesses_A, _ = cRV.radial_velocities_of_multiple_spectra(
 #    1-flux_collection, flux_template_A, rv_options, number_of_parallel_jobs=4,
 #    plot=False, fit_two_components=False
-#)
+# )
+
 RV_guess_collection = np.empty((len(wavelength_collection_list), 2))
 # RV_guess_collection[:, 0] = RV_guesses_A
 # RV_guesses_B = -RV_guesses_A * (mass_A_estimate / mass_B_estimate)
@@ -267,7 +268,7 @@ interval_results = ssr.spectral_separation_routine_multiple_intervals(
     wavelength_buffer_size, time_values=bjdtdb-(2400000+54976.6348), period=orbital_period_estimate
 )
 plt.show(block=True)
-# # # Calculate error # # #
+# # # Calculate error by splitting into multiple independent intervals # # #
 interval_results = ssr.spectral_separation_routine_multiple_intervals(
      wavelength_buffered, wavelength_intervals, flux_collection_buffered,
      flux_template_A_buffered,

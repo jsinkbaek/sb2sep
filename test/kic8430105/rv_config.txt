@@ -5,9 +5,9 @@
 
 vsini_guess_A 1.0       # initial guess for rotational broadening function fit. Generally okay to leave as is.
 vsini_guess_B 1.0
-delta_v_bf 1.0       # Should be None, or the same as routine_config delta_v. The only reason you would specify
+delta_v_bf None       # Should be None, or the same as routine_config delta_v. The only reason you would specify
                      # anything else is if you would want to calculate the broadening function using an internally
-                     # different delta_v.
+                     # different delta_v. Tip: DON'T USE THIS
 vary_vsini_A True	# Indicates if vsini should be fitted for. Usually best to set ensure correct shape of broadening function fit.
 vary_vsini_B True
 vsini_vary_limit_A None	# Limit on how must vsini can be changed during iteration. None = unconstrained. Float between
@@ -47,7 +47,8 @@ ignore_at_phase_A None	# (float,float). If supplied, separated component A spect
 			# np.mod(time_values, period)/period correspond to the phase given.
 			# Do not use whitespace between the values in the parentheses.
 			# If None, separated A spectrum is always used when calculating RV_B
-ignore_at_phase_B (0.98,0.02)	# Same as above, but for component B.
+ignore_at_phase_B (0.98,0.02)	# Same as above, but for component B. Can be a list of tuples too. Make sure not to have
+                                # any white spaces.
 
 verbose True		# If True, extra prints are done during this subroutine.
 
@@ -69,7 +70,7 @@ evaluate_spectra_B [1,2,3,4,5,6,7,9,11,12,13,16,17,19,21]  # to evaluate converg
                          # convergence_limit (regardless of RV_B). And spectrum 1 will require both RV_A and RV_B to be
                          # below convergence_limit. Any other spectra will only do 1 iteration.
                          # This setting also indicates which RVs the parent routine should evaluate RMS for.
-fitting_profile Gaussian    # Specifies the fitting profile used to fit the broadening function. Can either be 'RotBF' for
+fitting_profile RotBF    # Specifies the fitting profile used to fit the broadening function. Can either be 'RotBF' for
                          # 'rotational broadening function profile' or 'Gaussian' for a Gaussian profile. If 'Gaussian',
                          # vsini related parameters relate to the Gaussian sigma value (before broadening function
                          # smoothing and convolution to account for resolution). Limb darkening parameters are ignored

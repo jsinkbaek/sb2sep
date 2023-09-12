@@ -3,7 +3,13 @@ Separate Stellar Component Spectra and Calculate Radial Velocities in SB2 Binary
 
 Please see the [documentation](https://jsinkbaek.github.io/sb2sep/) for a description and guides on how to use the software.
 
-The package can be installed using pip:
+Suggested installation:
+
+Download the whole folder, and install from the main folder in a terminal with your python environment sourced using:
+
+``pip install .``
+
+Alternatively, the last version of the package that I have uploaded to pypi can be installed using:
 
 ``pip install sb2sep``
 
