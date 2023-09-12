@@ -438,7 +438,7 @@ def simple_normalizer(
 
 def resample_and_normalize_all_spectra(
         wavelength_collection_list: list, flux_collection_list: list, delta_v, plot=False,
-        wavelength_limits=None
+        wavelength_limits=None, reduce_em_lines=True
 ):
     if wavelength_limits is not None:
         wl_a, wl_b = wavelength_limits
@@ -451,7 +451,7 @@ def resample_and_normalize_all_spectra(
     flux_collection = flux_collection[0]
 
     normalized_flux = normalize_all_resampled_with_combined_spectrum(
-        wavelength_grid, flux_collection, delta_v=delta_v, plot=plot
+        wavelength_grid, flux_collection, delta_v=delta_v, plot=plot, reduce_em_lines=reduce_em_lines
     )
     return wavelength_grid, normalized_flux
 

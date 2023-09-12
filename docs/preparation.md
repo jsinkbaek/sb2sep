@@ -13,6 +13,24 @@ Input:
 Returns:
 - wavelength, normalized_flux
 
+Alternatively, the more extensive function `resample_and_normalize_all_spectra()` can be used. It first resamples all 
+the observed spectra. Then, it makes a mean spectrum (ignoring RVs) to get a first-order measurement of the average 
+continuum. It can do this with a much more accurate filter, which is in turn (normally) super sensitive to emission
+lines (IF YOUR STAR HAS FIXED EMISSION LINES THAT ARE WIDE RELATIVE TO THE RV VARIATIONS, THIS WILL NOT WORK AS INTENDED).
+The mean continuum is then used in order to reduce the dimensionality of the individual observation continua.
+
+Input:
+- **wavelength_collection_list** List(np.ndarray)
+- **flux_collection_list** List(np.ndarray)
+- **delta_v** float
+- **plot** bool, Default = False
+- **wavelength_limits** np.ndarray shape (2,) wavelength limits for the resampled spectra. Default = None.
+- **reduce_em_lines** bool, Default = True. If True, strong emission lines relative to local error estimate will be reduced.
+
+Returns:
+- wavelength_grid, shape (n, )
+- normalized_flux, shape (n, n_spectra)
+
 ## Loading template spectra
 If using template spectra from [Coelho et al. 2005](https://www.aanda.org/articles/aa/pdf/2005/44/aa3511-05.pdf), the function `load_template_spectrum()` can be used to load from file.
 
