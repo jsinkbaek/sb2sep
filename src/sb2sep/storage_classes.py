@@ -73,6 +73,8 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
                 sep_options.weights = np.array(eval_list)
         elif value == 'verbose':
             sep_options.verbose = col1[index] == 'True'
+        elif value == "interp_method":
+            sep_options.interp_method = col1[index]
         else:
             raise KeyError(f'Separation options config file key {value} not supported.')
 
@@ -182,6 +184,8 @@ def load_configuration_files(loc_routine_file, loc_separation_file, loc_rv_file)
                 rv_options.delta_v_bf = None
             else:
                 rv_options.delta_v_bf = float(col1[index])
+        elif value == "interp_method":
+            rv_options.interp_method = col1[index]
         else:
             raise KeyError(f'RV options config file key {value} not supported.')
     return routine_options, sep_options, rv_options
@@ -279,7 +283,8 @@ class RadialVelocityOptions:
             vary_vsini_on_refit_A=False,
             vary_vsini_on_refit_B=False,
             delta_v_bf=None,
-            fit_gui=False
+            fit_gui=False,
+            interp_method="linear"
     ):
         # Value for vsini, and whether or not to fit it
         self.vsini_A = vsini_guess_A
@@ -351,6 +356,8 @@ class RadialVelocityOptions:
 
         self.fit_gui = fit_gui
 
+        self.interp_method = interp_method
+
 
 class SeparateComponentsOptions:
     def __init__(
@@ -364,7 +371,8 @@ class SeparateComponentsOptions:
             verbose=False,
             use_for_spectral_separation_A=None,
             use_for_spectral_separation_B=None,
-            weights=None
+            weights=None,
+            interp_method="linear"
     ):
         self.delta_v = delta_v
         self.convergence_limit = convergence_limit
@@ -376,6 +384,7 @@ class SeparateComponentsOptions:
         self.use_for_spectral_separation_A = use_for_spectral_separation_A
         self.use_for_spectral_separation_B = use_for_spectral_separation_B
         self.weights = weights
+        self.interp_method = interp_method
 
 
 class RoutineOptions:
@@ -389,7 +398,7 @@ class RoutineOptions:
             save_plot_path=None,
             save_all_results=True,
             save_path='./',
-            filename_bulk=None,
+            filename_bulk="",
             plot_order=0,
             adjust_vsini=True,
             delta_v=1.0

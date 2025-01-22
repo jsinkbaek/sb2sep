@@ -19,7 +19,7 @@ def load_template_spectrum(template_spectrum_path: str):
         hdr = hdul[0].header
         flux = hdul[0].data
         wl0, delta_wl, naxis = hdr['CRVAL1'], hdr['CDELT1'], hdr['NAXIS1']
-    wavelength = np.linspace(wl0, wl0+delta_wl*naxis, naxis)
+    wavelength = np.linspace(wl0, wl0+delta_wl*naxis, naxis, endpoint=False)
     return wavelength, flux
 
 
@@ -38,6 +38,13 @@ def load_phoenix_template(template_spectrum_path: str, wave_ref_path: str):
     return wavelength, flux, norm_flux
 
 
+def load_eso_intrigoss_template(template_spectrum_path: str):
+    with fits.open(template_spectrum_path) as hdul:
+        data = hdul[1].data
+        wl, fl = data['wavelength'], data['normalized_flux']
+    return wl, fl
+
+
 def load_program_spectrum(program_spectrum_path: str):
     with fits.open(program_spectrum_path) as hdul:
         hdr = hdul[0].header
@@ -46,8 +53,8 @@ def load_program_spectrum(program_spectrum_path: str):
         RA, DEC = hdr['OBJRA'], hdr['OBJDEC']
         date = hdr['DATE-AVG']
         exptime = hdr['EXPTIME']
-    wavelength = np.linspace(wl0, wl0 + delta_wl * flux.size, flux.size)
-    return wavelength, flux, date, RA, DEC, exptime
+    wavelength = np.linspace(wl0, wl0 + delta_wl * flux.size, flux.size, endpoint=False)
+    return wavelength, flux, date, RA, DEC
 
 
 def _resample_multiple_spectra(wavelength_template: np.ndarray, wavelength_list: list, flux_list: list):

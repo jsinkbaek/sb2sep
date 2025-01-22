@@ -8,7 +8,7 @@ delta_v 1.0             # (km/s) MUST BE SET TO THE SAME VALUE AS USED TO RESAMP
 convergence_limit 1E-5		# Convergence criteria for RMS of radial velocities needed to exit 
 				# routine.
 
-iteration_limit 3		# Maximum allowed iterations of parent routine before automatic exit.
+iteration_limit 2		# Maximum allowed iterations of parent routine before automatic exit.
 
 plot True			    # If True, diagnostic plots are shown and updated between iterations.
 
@@ -26,7 +26,7 @@ save_path results/		# Defines the folder that raw data is saved to when save_all
 filename_bulk None     # Defines the naming scheme for the output. If not provided or None, naming scheme is chosen as
                        # 'min(wl)_max(wl)'
 
-adjust_vsini True  # If True, vsini guess of both components will be set to the mean value found during RV subroutine
+adjust_vsini False  # If True, vsini guess of both components will be set to the mean value found during RV subroutine
                     # after every iteration
 
 

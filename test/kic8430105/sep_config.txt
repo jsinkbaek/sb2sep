@@ -33,4 +33,6 @@ weights None		# List or None.
 			# not just same length as number of spectra used in component calculation.
 			# Example (6 spectra): [5.0,0.5,1.0,1.2,120,0.0]    NOTE: No whitespace :)
 
+interp_method makima     # Interpolation method when Doppler shifting the spectrum. Can be "makima" or "linear".
+
 verbose False		# If True, provides additional prints to console.

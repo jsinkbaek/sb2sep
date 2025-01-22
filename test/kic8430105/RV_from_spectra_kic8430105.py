@@ -8,22 +8,16 @@ from barycorrpy import get_BC_vel, utc_tdb
 import scipy.constants as scc
 import matplotlib.pyplot as plt
 import matplotlib
-from PyAstronomy.pyasl.asl.rotBroad import rotBroad
 
-try:
-    from src.sb2sep import spectrum_processing_functions as spf
-    from src.sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions, load_configuration_files
-    import src.sb2sep.spectral_separation_routine as ssr
-    from src.sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
-    import src.sb2sep.calculate_radial_velocities as cRV
-except ModuleNotFoundError:
-    print('Using installed package sb2sep.')
-    from sb2sep import spectrum_processing_functions as spf
-    from sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions, load_configuration_files
-    import sb2sep.spectral_separation_routine as ssr
-    from sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
-    import sb2sep.calculate_radial_velocities as cRV
+print('Using installed package sb2sep.')
+from sb2sep import spectrum_processing_functions as spf
+from sb2sep.storage_classes import RadialVelocityOptions, SeparateComponentsOptions, RoutineOptions, load_configuration_files
+import sb2sep.spectral_separation_routine as ssr
+from sb2sep.linear_limbd_coeff_estimate import estimate_linear_limbd
+import sb2sep.calculate_radial_velocities as cRV
 import warnings
+
+matplotlib.use('TkAgg')
 
 matplotlib.rcParams.update({'font.size': 25})
 
@@ -34,8 +28,8 @@ warnings.filterwarnings("ignore", category=UserWarning)
 plt.ioff()
 data_path = 'Data/'
 
-observatory_location = EarthLocation.of_site("lapalma")
-observatory_name = "lapalma"
+observatory_location = EarthLocation.of_site("Roque de los Muchachos")
+observatory_name = "Roque de los Muchachos"
 stellar_target = "kic8430105"
 wavelength_normalization_limit = (4000, 7000)   # Ångström, limit to data before performing continuum normalization
 wavelength_RV_limit = (4000, 7000)              # Ångström, the area used after normalization
@@ -84,33 +78,10 @@ template_spectrum_path_B = 'Data/template_spectra/5500_45_m05p00.ms.fits'
 load_previous = True
 
 # # Generate rv_options # #
-# rv_options = RadialVelocityOptions(
-#     vsini_guess_A=4.0, vsini_guess_B=4.0,
-#     delta_v=delta_v, spectral_resolution=67000,
-#     velocity_fit_width_A=60, velocity_fit_width_B=20,
-#     limbd_coef_A=limbd_A, limbd_coef_B=limbd_B,
-#     refit_width_A=10.0, refit_width_B=8.0,
-#     smooth_sigma_A=2.0, smooth_sigma_B=4.0,
-#     bf_velocity_span=bf_velocity_span,
-#     ignore_at_phase_B=(0.98, 0.02),
-#     iteration_limit=6, convergence_limit=5e-3
-# )
-# # Generate component spectrum calculation options
-# sep_comp_options = SeparateComponentsOptions(
-#     delta_v=delta_v, convergence_limit=1e-2, max_iterations=10,
-#     use_for_spectral_separation_A=None,     # re-defined after loading all the observed spectra below
-#     use_for_spectral_separation_B=None      # same
-# )
-# # Generate spectral separation routine options
-# routine_options = RoutineOptions(
-#     convergence_limit=1E-5, iteration_limit=2,
-#    plot=True, return_unbuffered=True, save_path='results/', save_all_results=True
-# )
-# # Alternative generation of options objects above through configuration files:
 routine_options, sep_comp_options, rv_options = load_configuration_files(
     'routine_config.txt', 'sep_config.txt', 'rv_config.txt'
 )
-rv_options.fit_gui = True
+# rv_options.fit_gui = True
 
 
 ##################### PREPARATION BEFORE SEPARATION ROUTINE CALLS #############################
@@ -200,18 +171,6 @@ wavelength_template_A, flux_template_A = wavelength_template_A[mask], flux_templ
 mask = (wavelength_template_B > wavelength_RV_limit[0]-100) & (wavelength_template_B < wavelength_RV_limit[1]+100)
 wavelength_template_B, flux_template_B = wavelength_template_B[mask], flux_template_B[mask]
 
-# # Broaden templates
-load_broadened = True
-if not load_broadened:
-    flux_template_A = rotBroad(wavelength_template_A, flux_template_A, 0.0, 1.5)
-    flux_template_B = rotBroad(wavelength_template_B, flux_template_B, 0.0, 1.5)
-    np.save('flux_template_A_temp.npy', flux_template_A)
-    np.save('flux_template_B_temp.npy', flux_template_B)
-else:
-    # flux_template_A = np.load('flux_template_A_temp.npy')
-    # flux_template_B = np.load('flux_template_B_temp.npy')
-    pass
-
 # # Resample to same wavelength grid, equi-spaced in velocity space # #
 wavelength, (flux_collection, flux_template_A, flux_template_B) = spf.resample_multiple_spectra(
     delta_v, (wavelength_collection_list, flux_collection_list), (wavelength_template_A, flux_template_A),
@@ -220,8 +179,8 @@ wavelength, (flux_collection, flux_template_A, flux_template_B) = spf.resample_m
 
 # # Perform barycentric corrections # #
 for i in range(0, flux_collection[0, :].size):
-    flux_collection[:, i] = ssr.shift_spectrum(
-        flux_collection[:, i], bc_rv_cor[i]-system_RV_estimate, delta_v
+    flux_collection[:, i] = ssr.shift_wavelength_spectrum(
+        wavelength, flux_collection[:, i], bc_rv_cor[i]-system_RV_estimate, "makima", 1.0
     )
 
 # # Shorten spectra if uneven # #
@@ -240,18 +199,24 @@ wavelength, flux_unbuffered_list, wavelength_buffered, flux_buffered_list, buffe
     flux_buffered_list
 
 # # Calculate broadening function RVs to use as initial guesses # #
-# RV_guesses_A, _ = cRV.radial_velocities_of_multiple_spectra(
-#    1-flux_collection, flux_template_A, rv_options, number_of_parallel_jobs=4,
+# RV_guesses_A, extra_stuff = cRV.radial_velocities_of_multiple_spectra(
+#    1-flux_collection, 1-flux_template_A, rv_options, number_of_parallel_jobs=2,
 #    plot=False, fit_two_components=False
 # )
+# bf_velocity, bf_vals, bf_vals_smooth, model_vals = extra_stuff
+# print(bf_velocity.shape, bf_vals.shape)
+# for i in range(bf_vals_smooth.shape[1]):
+#     plt.figure()
+#     plt.plot(bf_velocity, bf_vals_smooth[:, i], "k-")
+#     plt.plot(bf_velocity, model_vals[:, i], "r-")
+# plt.show(block=True)
 
 RV_guess_collection = np.empty((len(wavelength_collection_list), 2))
 # RV_guess_collection[:, 0] = RV_guesses_A
 # RV_guesses_B = -RV_guesses_A * (mass_A_estimate / mass_B_estimate)
-
 # RV_guess_collection[:, 1] = RV_guesses_B
 
-model = np.loadtxt('/home/sinkbaek/PycharmProjects/Seismic-dEBs/Binary_Analysis/JKTEBOP/NOT/kepler_pdcsap/model.out')
+model = np.loadtxt('ebmodel.out')
 phase = np.mod(bjdtdb-2454998.2336069366, orbital_period_estimate, dtype=np.float64)/orbital_period_estimate
 RV_guess_collection[:, 0] = np.interp(phase, model[:, 0], model[:, 6])-system_RV_estimate
 RV_guess_collection[:, 1] = np.interp(phase, model[:, 0], model[:, 7])-system_RV_estimate
