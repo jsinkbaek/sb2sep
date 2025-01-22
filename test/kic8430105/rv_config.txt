@@ -21,7 +21,7 @@ smooth_sigma_B 3.5	# fitting. Inspect non-smoothed broadening functions first, 4
 			        # too high. With a dim component B, a higher smoothing value than for A will
 			        # make it possible to smooth out some of the noise from A.
 
-bf_velocity_span 200	# Full-width of the broadening function in velocity space (km/s). If good first guesses are
+bf_velocity_span 130	# Full-width of the broadening function in velocity space (km/s). If good first guesses are
                         # provided and system velocity is removed beforehand, this only needs to be slightly higher
                         # than 2*(K_A + K_B). Affects performance of routine significantly.
                         # You can also use the "center_on_system_rv" arguments below to specify an internal offset
@@ -65,8 +65,11 @@ evaluate_spectra_B [1,2,3,4,5,6,7,9,11,12,13,16,17,19,21]  # to evaluate converg
                          # convergence_limit (regardless of RV_B). And spectrum 1 will require both RV_A and RV_B to be
                          # below convergence_limit. Any other spectra will only do 1 iteration.
                          # This setting also indicates which RVs the parent routine should evaluate RMS for.
+
 fitting_profile RotBF    # Specifies the fitting profile used to fit the broadening function. Can either be 'RotBF' for
                          # 'rotational broadening function profile' or 'Gaussian' for a Gaussian profile. If 'Gaussian',
                          # vsini related parameters relate to the Gaussian sigma value (before broadening function
                          # smoothing and convolution to account for resolution). Limb darkening parameters are ignored
                          # when using 'Gaussian'.
+
+interp_method makima     # Interpolation method when Doppler shifting the spectrum. Can be "makima" or "linear".

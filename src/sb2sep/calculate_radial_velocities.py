@@ -90,7 +90,6 @@ def _pull_results_mspectra_1comp(broadening_function_template: BroadeningFunctio
             plt.figure()
             plt.plot(broadening_function_template.velocity, broadening_function_vals_smoothed[:, i])
             plt.plot(broadening_function_template.velocity, model_values, 'k--')
-            plt.show(block=False)
     if plot:
         plt.show(block=True)
     extra_results = (broadening_function_template.velocity, broadening_function_vals, broadening_function_vals_smoothed,
